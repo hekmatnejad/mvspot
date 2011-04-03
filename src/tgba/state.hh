@@ -89,6 +89,12 @@ namespace spot
       delete this;
     }
 
+    /// \brief Whether destroying a state is important.
+    virtual bool destroy_is_important() const
+    {
+      return true;
+    }
+
   protected:
     /// \brief Destructor.
     ///

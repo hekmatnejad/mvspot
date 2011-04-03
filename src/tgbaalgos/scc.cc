@@ -47,14 +47,16 @@ namespace spot
 
   scc_map::~scc_map()
   {
-    hash_type::iterator i = h_.begin();
-
-    while (i != h_.end())
+    if (!h_.empty() && h_.begin()->first->destroy_is_important())
       {
-	// Advance the iterator before deleting the key.
-	const state* s = i->first;
-	++i;
-	s->destroy();
+	hash_type::iterator i = h_.begin();
+	while (i != h_.end())
+	  {
+	    // Advance the iterator before deleting the key.
+	    const state* s = i->first;
+	    ++i;
+	    s->destroy();
+	  }
       }
   }
 

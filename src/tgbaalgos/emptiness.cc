@@ -41,10 +41,13 @@ namespace spot
 
   tgba_run::~tgba_run()
   {
-    for (steps::const_iterator i = prefix.begin(); i != prefix.end(); ++i)
-      i->s->destroy();
-    for (steps::const_iterator i = cycle.begin(); i != cycle.end(); ++i)
-      i->s->destroy();
+    if (cycle.begin()->s->destroy_is_important())
+      {
+	for (steps::const_iterator i = prefix.begin(); i != prefix.end(); ++i)
+	  i->s->destroy();
+	for (steps::const_iterator i = cycle.begin(); i != cycle.end(); ++i)
+	  i->s->destroy();
+      }
   }
 
   tgba_run::tgba_run(const tgba_run& run)

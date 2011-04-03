@@ -74,6 +74,13 @@ namespace spot
     return const_cast<state_product*>(this);
   }
 
+  bool
+  state_product::destroy_is_important() const
+  {
+    return left_->destroy_is_important() || right_->destroy_is_important();
+  }
+
+
   ////////////////////////////////////////////////////////////
   // tgba_succ_iterator_product
 

@@ -368,16 +368,17 @@ namespace spot
     while (!todo.empty())
       {
 	succ_queue& queue = todo.back().q;
-	for (succ_queue::iterator q = queue.begin();
-	     q != queue.end(); ++q)
-	  {
-	    // Destroy the state if it is a clone of a
-	    // state in the heap...
-	    numbered_state_heap::state_index_p spi = ecs_->h->index(q->s);
-	    // ... or if it is an unknown state.
-	    if (spi.first == 0)
-	      q->s->destroy();
-	  }
+	if (!queue.empty() && queue.begin()->s->destroy_is_important())
+	  for (succ_queue::iterator q = queue.begin();
+	       q != queue.end(); ++q)
+	    {
+	      // Destroy the state if it is a clone of a
+	      // state in the heap...
+	      numbered_state_heap::state_index_p spi = ecs_->h->index(q->s);
+	      // ... or if it is an unknown state.
+	      if (spi.first == 0)
+		q->s->destroy();
+	    }
 	dec_depth(todo.back().q.size() + 1);
 	todo.pop_back();
       }

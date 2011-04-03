@@ -82,13 +82,16 @@ namespace spot
       {
 	for (stack_type::iterator i = stack.begin(); i != stack.end(); ++i)
 	  delete i->lasttr;
-	hash_type::const_iterator s = h.begin();
-	while (s != h.end())
+	if (!h.empty() && h.begin()->first->destroy_is_important())
 	  {
-	    // Advance the iterator before deleting the "key" pointer.
-	    const state* ptr = s->first;
-	    ++s;
-	    ptr->destroy();
+	    hash_type::const_iterator s = h.begin();
+	    while (s != h.end())
+	      {
+		// Advance the iterator before deleting the "key" pointer.
+		const state* ptr = s->first;
+		++s;
+		ptr->destroy();
+	      }
 	  }
       }
 

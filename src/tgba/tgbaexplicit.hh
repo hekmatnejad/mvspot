@@ -64,6 +64,12 @@ namespace spot
     {
     }
 
+    virtual
+    bool destroy_is_important() const
+    {
+      return false;
+    }
+
     /// Explicit transitions.
     struct transition
     {

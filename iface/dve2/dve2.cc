@@ -113,6 +113,11 @@ namespace spot
 	return memcmp(vars, o->vars, size * sizeof(*vars));
       }
 
+      bool destroy_is_important() const
+      {
+	return false;
+      }
+
     private:
 
       ~dve2_state()

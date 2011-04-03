@@ -63,6 +63,8 @@ namespace spot
       return right_;
     }
 
+    virtual bool destroy_is_important() const;
+
     virtual int compare(const state* other) const;
     virtual size_t hash() const;
     virtual state_product* clone() const;

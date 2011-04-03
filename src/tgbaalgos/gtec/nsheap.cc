@@ -79,14 +79,17 @@ namespace spot
 
   numbered_state_heap_hash_map::~numbered_state_heap_hash_map()
   {
-    // Free keys in H.
-    hash_type::iterator i = h.begin();
-    while (i != h.end())
+    if (!h.empty() && h.begin()->first->destroy_is_important())
       {
-	// Advance the iterator before deleting the key.
-	const state* s = i->first;
-	++i;
-	s->destroy();
+	// Free keys in H.
+	hash_type::iterator i = h.begin();
+	while (i != h.end())
+	  {
+	    // Advance the iterator before deleting the key.
+	    const state* s = i->first;
+	    ++i;
+	    s->destroy();
+	  }
       }
   }
 

@@ -36,13 +36,16 @@ namespace spot
 
   tgba_reachable_iterator::~tgba_reachable_iterator()
   {
-    seen_map::const_iterator s = seen.begin();
-    while (s != seen.end())
+    if (!seen.empty() && seen.begin()->first->destroy_is_important())
       {
-	// Advance the iterator before deleting the "key" pointer.
-	const state* ptr = s->first;
-	++s;
-	ptr->destroy();
+	seen_map::const_iterator s = seen.begin();
+	while (s != seen.end())
+	  {
+	    // Advance the iterator before deleting the "key" pointer.
+	    const state* ptr = s->first;
+	    ++s;
+	    ptr->destroy();
+	  }
       }
   }
 
