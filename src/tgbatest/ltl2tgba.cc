@@ -50,6 +50,7 @@
 #include "tgbaalgos/dupexp.hh"
 #include "tgbaalgos/minimize.hh"
 #include "tgbaalgos/neverclaim.hh"
+#include "tgbaalgos/propagation.hh"
 #include "tgbaalgos/reductgba_sim.hh"
 #include "tgbaalgos/replayrun.hh"
 #include "tgbaalgos/rundotdec.hh"
@@ -215,6 +216,7 @@ syntax(char* prog)
 	    << "  -RD   display the parity game (dot format)" << std::endl
             << "  -Rm   attempt to minimize the automata" << std::endl
 	    << "  -RS   BDD-based simulation reduction" << std::endl
+	    << "  -pr	propagate acceptance conditions" << std::endl
 	    << std::endl
 
             << "Automaton conversion:" << std::endl
@@ -329,6 +331,7 @@ main(int argc, char** argv)
   bool graph_run_tgba_opt = false;
   bool opt_reduce = false;
   bool opt_minimize = false;
+  bool opt_propagate = false;
   bool opt_monitor = false;
   bool containment = false;
   bool show_fc = false;
@@ -670,6 +673,10 @@ main(int argc, char** argv)
         {
           opt_simul = true;
         }
+      else if (!strcmp(argv[formula_index], "-pr"))
+	{
+	  opt_propagate = true;
+	}
       else if (!strcmp(argv[formula_index], "-M"))
         {
           opt_monitor = true;
@@ -977,6 +984,26 @@ main(int argc, char** argv)
 	      assume_sba = true;
 	    }
 	}
+
+      const spot::tgba* propagated = 0;
+      if (opt_propagate)
+      {
+	tm.start("propagation of acceptance conditions");
+	propagated = propagate_acceptance_conditions (a);
+	tm.stop("propagation of acceptance conditions");
+
+	if (propagated == 0)
+	{
+	  std::cerr << "Error could not propagate acceptance condition "
+		    << "for the given automaton"
+		    << std::endl;
+	  exit (2);
+	}
+	else if (propagated == a)
+	  propagated = 0;
+	else
+	  a = propagated;
+      }
 
       unsigned int n_acc = a->number_of_acceptance_conditions();
       if (echeck_inst
@@ -1390,6 +1417,7 @@ main(int argc, char** argv)
       delete expl;
       delete aut_red;
       delete minimized;
+      delete propagated;
       delete degeneralized;
       delete simulaut;
       delete aut_scc;
