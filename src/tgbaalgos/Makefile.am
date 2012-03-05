@@ -59,6 +59,7 @@ tgbaalgos_HEADERS = \
   scc.hh \
   sccfilter.hh \
   se05.hh \
+  simulation.hh \
   stats.hh \
   tau03.hh \
   tau03opt.hh \
@@ -97,6 +98,7 @@ libtgbaalgos_la_SOURCES = \
   scc.cc \
   sccfilter.cc \
   se05.cc \
+  simulation.cc \
   stats.cc \
   tau03.cc \
   tau03opt.cc \
