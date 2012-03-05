@@ -1,3 +1,13 @@
+2012-03-05  Thomas Badie  <thomas.badie@epita.fr>
+
+	Initialize the simulation.
+
+	* src/tgbaalgos/Makefile.am: Add the files simulation.cc
+	simulation.hh to the compilation.
+	* src/tgbaalgos/simulation.cc,
+	src/tgbaalgos/simulation.hh: New files.
+
+
 2012-03-08  Thomas Badie  <thomas.badie@epita.fr>
 
 	Add a class to convert a bdd into its complement.
