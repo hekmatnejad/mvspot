@@ -1,3 +1,11 @@
+2012-03-08  Thomas Badie  <thomas.badie@epita.fr>
+
+	Add a class to convert a bdd into its complement.
+
+	* src/misc/accconv.cc, src/misc/accconv.hh: New. Add a way to
+	convert a bdd in an automaton, into its complement.
+	* src/misc/Makefile.am: Add the new files to the compilation.
+
 2012-02-10  Pierre Parutto  <parutto@lrde.epita.fr>
 
 	Modified style, generic automaton rewriting in propagation
