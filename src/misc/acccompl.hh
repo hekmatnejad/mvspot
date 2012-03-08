@@ -25,6 +25,8 @@
 #include <bdd.h>
 #include "misc/hash.hh"
 #include "misc/bddlt.hh"
+#include "tgbaalgos/reachiter.hh"
+#include "tgba/tgbaexplicit.hh"
 
 namespace spot
 {
@@ -48,6 +50,53 @@ namespace spot
       typedef Sgi::hash_map<bdd, bdd, bdd_hash> bdd_cache_t;
       bdd_cache_t cache_;
   };
+
+
+  class AccComplAutomaton:
+      public tgba_reachable_iterator_depth_first
+  {
+    public:
+      AccComplAutomaton(tgba* a)
+        : tgba_reachable_iterator_depth_first(a),
+          size(0),
+          ea_(down_cast<tgba_explicit*> (a)),
+          ac_(ea_->all_acceptance_conditions())
+      {
+      }
+
+      void process_link(const state* in_s,
+                        int in,
+                        const state* out_s,
+                        int out,
+                        const tgba_succ_iterator* si)
+      {
+        (void) in_s;
+        (void) in;
+        (void) out;
+        (void) out_s;
+
+        const tgba_explicit_succ_iterator* tmpit =
+          down_cast<const tgba_explicit_succ_iterator*> (si);
+
+        tgba_explicit::transition* t = ea_->get_transition(tmpit);
+
+        t->acceptance_conditions
+          = ac_.complement(t->acceptance_conditions);
+      }
+
+      void process_state(const state*, int, tgba_succ_iterator*)
+      {
+        ++size;
+      }
+
+    public:
+      size_t size;
+
+    private:
+      tgba_explicit* ea_;
+      AccCompl ac_;
+  };
+
 } // End namespace Spot
 
 #endif // !SPOT_MISC_ACCCOMPL_HH_
