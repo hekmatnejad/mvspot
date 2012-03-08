@@ -18,6 +18,7 @@
 // Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 // 02111-1307, USA.
 
+#include <queue>
 #include <map>
 #include <utility>
 #include "tgba/tgbaexplicit.hh"
@@ -25,7 +26,7 @@
 #include "tgba/tgbatba.hh"
 #include "ltlast/allnodes.hh"
 #include "simulation.hh"
-
+#include "misc/acccompl.hh"
 
 // The way we will develop this algorithm is the following:
 // We'll take an automaton, and reverse all these acceptance conditions.
@@ -44,7 +45,7 @@
 // sig(transA) & sig(transB) & rel == sig(transA) & rel
 // So the algorithm is cut into several step:
 //
-// 1. Running to the ba and switch the acceptance condition to their
+// 1. Running through the ba and switch the acceptance condition to their
 //    negation, and initializing rel to bddtrue. This function is `init'.
 // 2. Entering in the loop.
 //    - running through the automaton and computing the signature of each
@@ -59,11 +60,53 @@
 // Obviously these functions are possibly cut into several little one.
 // This is just the general development idea.
 
+
+
 namespace spot
 {
   namespace
   {
+    typedef Sgi::hash_set<const state*,
+                          state_ptr_hash, state_ptr_equal> hash_set;
+
+
+    class Simulation
+    {
+      public:
+        Simulation(const tgba* t)
+          : automata_(t),
+            acc_compl_(t->all_acceptance_conditions())
+        {
+          // We'll start our work by replacing all the acceptance
+          // conditions by their complement.
+          //tgba_explicit* a = down_cast<tgba_explicit*>(const_cast<tgba*> (t));
+        }
+
+        ~Simulation()
+        {
+          // Re-invert the complement of all acceptance condition
+          // here.
+        }
+
+      private:
+        const tgba* automata_;
+        AccCompl acc_compl_;
+    };
+
 
   } // End namespace anonymous.
+
+
+
+  tgba*
+  simulation(const tgba*)
+  {
+
+
+
+    return 0;
+  }
+
+
 
 } // End namespace spot.
