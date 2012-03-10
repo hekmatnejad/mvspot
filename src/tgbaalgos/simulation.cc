@@ -91,8 +91,9 @@ namespace spot
 
         ~Simulation()
         {
+          // FIXME: Currently, it is not inversible.
           // Re-invert the complement of all acceptance condition
-          acc_compl_.run();
+          // acc_compl_.run();
         }
 
 
@@ -122,9 +123,49 @@ namespace spot
 
         void update_sig()
         {
+          // At this time, current_class_ must be empty.  It implies
+          // that the "previous_it_class_ = current_class_" must be
+          // done before.
+          assert(!current_class_.size());
+          Sgi::hash_set<const state*,
+                        state_ptr_hash, state_ptr_equal> seen;
+          std::queue<const state*> todo;
 
+          state* init = automata_->get_init_state();
+          todo.push(init);
+
+          // Work on the initial state.
+          bdd_lstate_[compute_sig(init)].push_back(init);
+          seen.insert(init);
+
+          while (!todo.empty())
+          {
+            const state* src = todo.front();
+            todo.pop();
+
+            tgba_succ_iterator* sit = automata_->succ_iter(src);
+            for (sit->first(); !sit->done(); sit->next())
+            {
+              state* dst = sit->current_state();
+
+              // New state?
+              if (seen.end() == seen.find(dst))
+              {
+                // Register in the todo list
+                todo.push(dst);
+
+                // Register in the already seen.
+                seen.insert(dst);
+
+                // Register in the right SPOT
+                bdd_lstate_[compute_sig(dst)].push_back(dst);
+              }
+              else
+                dst->destroy();
+            }
+            delete sit;
+          }
         }
-
 
 
       private:
