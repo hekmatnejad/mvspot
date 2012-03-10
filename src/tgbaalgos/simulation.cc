@@ -23,7 +23,6 @@
 #include <utility>
 #include "tgba/tgbaexplicit.hh"
 #include "ltlast/formula.hh"
-#include "tgba/tgbatba.hh"
 #include "ltlast/allnodes.hh"
 #include "simulation.hh"
 #include "misc/acccompl.hh"
@@ -46,7 +45,8 @@
 // So the algorithm is cut into several step:
 //
 // 1. Running through the ba and switch the acceptance condition to their
-//    negation, and initializing rel to bddtrue. This function is `init'.
+//    negation, and initializing rel to bddtrue. This function is the
+//    constructor of Simulation.
 // 2. Entering in the loop.
 //    - running through the automaton and computing the signature of each
 //      state. This function is `update_sig'.
@@ -66,31 +66,81 @@ namespace spot
 {
   namespace
   {
-    typedef Sgi::hash_set<const state*,
-                          state_ptr_hash, state_ptr_equal> hash_set;
+    // Some useful typedef:
+
+    // Used to get the signature of the state.
+    typedef Sgi::hash_map<const state*, bdd,
+                          state_ptr_hash, state_ptr_equal> map_state_bdd;
+
+    // Get the list of state for each class.
+    typedef std::map<bdd, std::list<const state*>,
+                     bdd_less_than> map_bdd_lstate;
 
 
     class Simulation
     {
       public:
         Simulation(const tgba* t)
-          : automata_(t),
-            acc_compl_(t->all_acceptance_conditions())
+          : automata_(const_cast<tgba*> (t)),
+            acc_compl_(automata_)
         {
           // We'll start our work by replacing all the acceptance
           // conditions by their complement.
-          //tgba_explicit* a = down_cast<tgba_explicit*>(const_cast<tgba*> (t));
+          acc_compl_.run();
         }
 
         ~Simulation()
         {
           // Re-invert the complement of all acceptance condition
-          // here.
+          acc_compl_.run();
         }
 
+
+        bdd
+        compute_sig(state* src)
+        {
+          tgba_succ_iterator* sit = automata_->succ_iter(src);
+          bdd res = bddtrue;
+
+          for (sit->first(); !sit->done(); sit->next())
+          {
+            const state* dst = sit->current_state();
+            bdd acc = sit->current_acceptance_conditions();
+
+            bdd to_add = previous_it_class_[src] & previous_it_class_[dst]
+              & acc & sit->current_condition();
+
+            // Include the signature implied by this transition in the
+            // signature of this state.
+            res &= to_add;
+            dst->destroy();
+          }
+
+          delete sit;
+          return res;
+        }
+
+        void update_sig()
+        {
+
+        }
+
+
+
       private:
-        const tgba* automata_;
-        AccCompl acc_compl_;
+        // The automaton which is simulated.
+        tgba* automata_;
+
+        // The object which run through the automaton and replace all
+        // acceptance condition by their complement.
+        AccComplAutomaton acc_compl_;
+
+        // The bdd which represents the domination relation between the
+        // class. It is the po.
+        bdd rel_;
+
+        // Represent the class of each state at the previous iteration.
+        map_state_bdd previous_it_class_;
     };
 
 
