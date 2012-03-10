@@ -32,6 +32,7 @@ noinst_PROGRAMS = ltl2tgba randtgba
 check_SCRIPTS = defs
 # Keep this sorted alphabetically.
 check_PROGRAMS = \
+  acccompl \
   bddprod \
   complement \
   explicit \
@@ -49,6 +50,7 @@ check_PROGRAMS = \
   tripprod
 
 # Keep this sorted alphabetically.
+accompl_SOURCES = acccompl.cc
 bddprod_SOURCES  = ltlprod.cc
 bddprod_CXXFLAGS = -DBDD_CONCRETE_PRODUCT
 complement_SOURCES = complementation.cc
