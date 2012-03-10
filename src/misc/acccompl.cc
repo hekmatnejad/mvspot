@@ -44,6 +44,11 @@ namespace spot
 
     bdd n = all_ - acc;
 
+    // This means, if acc == all, the opposite is bddfalse, and not
+    // bddtrue.
+    if (n == bddfalse)
+      res = bddfalse;
+
     while (n != bddfalse)
     {
       bdd cond = bdd_satone(n);
