@@ -1,3 +1,11 @@
+2012-03-11  Thomas Badie  <thomas.badie@epita.fr>
+
+	Add an update_sig method in Simulation.
+
+	* src/tgbaalgos/simulation.cc: Add a method to update the signature
+	for each state.
+	* src/tgbaalgos/simulation.hh: Expose the function simulation.
+
 2012-03-10  Thomas Badie  <badie@lrde.epita.fr>
 
 	Fix a bug in the complementation.

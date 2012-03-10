@@ -22,5 +22,11 @@
 # define SPOT_TGBAALGOS_SIMULATION_HH_
 
 
+namespace spot
+{
+  tgba* simulation(const tgba* automaton);
+} // End namespace spot.
+
+
 
 #endif // !SPOT_TGBAALGOS_SIMULATION_HH_
