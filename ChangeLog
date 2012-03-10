@@ -1,4 +1,4 @@
-2012-03-10  Thomas Badie  <thomas.badie@epita.fr>
+2012-03-10  Thomas Badie  <badie@lrde.epita.fr>
 
 	Fix a bug in the complementation.
 
@@ -8,25 +8,25 @@
 	* src/tgbatest/acccompl.cc, src/tgbatest/Makefile.am: Create a
 	test for the complementation on the acceptance condition.
 
-2012-03-10  Thomas Badie  <thomas.badie@epita.fr>
+2012-03-10  Thomas Badie  <badie@lrde.epita.fr>
 
 	Implement the signature in the simulation class.
 
 	* src/tgbaalgos/simulation.cc: Implement the signature in the
 	Simulation class.
 
-2012-03-09  Thomas Badie  <thomas.badie@epita.fr>
+2012-03-09  Thomas Badie  <badie@lrde.epita.fr>
 
 	Create a class to run through the automaton to revert all acc.
 
 	* src/misc/acccompl.hh: Create a class aimed to revert all
 	the acceptance condition of each transition of the automaton.
 
-2012-03-08  Thomas Badie  <thomas.badie@epita.fr>
+2012-03-08  Thomas Badie  <badie@lrde.epita.fr>
 
 	* src/tgbaalgos/simulation.cc: Create a class Simulation.
 
-2012-03-05  Thomas Badie  <thomas.badie@epita.fr>
+2012-03-05  Thomas Badie  <badie@lrde.epita.fr>
 
 	Initialize the simulation.
 
@@ -36,7 +36,7 @@
 	src/tgbaalgos/simulation.hh: New files.
 
 
-2012-03-08  Thomas Badie  <thomas.badie@epita.fr>
+2012-03-08  Thomas Badie  <badie@lrde.epita.fr>
 
 	Add a class to convert a bdd into its complement.
 
