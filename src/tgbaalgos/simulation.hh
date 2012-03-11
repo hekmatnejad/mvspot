@@ -18,15 +18,17 @@
 // Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 // 02111-1307, USA.
 
-#ifndef SPOT_TGBAALGOS_SIMULATION_HH_
-# define SPOT_TGBAALGOS_SIMULATION_HH_
+#ifndef SPOT_TGBAALGOS_SIMULATION_HH
+# define SPOT_TGBAALGOS_SIMULATION_HH
 
 
 namespace spot
 {
+  class tgba;
+
   tgba* simulation(const tgba* automaton);
 } // End namespace spot.
 
 
 
-#endif // !SPOT_TGBAALGOS_SIMULATION_HH_
+#endif // !SPOT_TGBAALGOS_SIMULATION_HH
