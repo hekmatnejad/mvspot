@@ -116,11 +116,24 @@ namespace spot
       public:
         Simulation(const tgba* t)
           : automata_(const_cast<tgba*> (t)),
-            acc_compl_(automata_)
+            acc_compl_(automata_, bdd_ithvar(automata_
+                                             ->get_dict()
+                                             ->register_anonymous_variables
+                                               (1, automata_))),
+            bdd_false_(bdd_ithvar(automata_->get_dict()
+                                  ->register_anonymous_variables(1,
+                                                                 automata_)))
+
         {
+          used_var.push_back(acc_compl_.init_);
+
+          rel_ = acc_compl_.init_ >> acc_compl_.init_;
+
           // We'll start our work by replacing all the acceptance
           // conditions by their complement.
           acc_compl_.run();
+
+          previous_it_class_ = acc_compl_.previous_it_class_;
         }
 
         ~Simulation()
@@ -140,19 +153,20 @@ namespace spot
           for (sit->first(); !sit->done(); sit->next())
           {
             const state* dst = sit->current_state();
-            bdd acc = sit->current_acceptance_conditions();
+            bdd before_acc = sit->current_acceptance_conditions();
+            bdd acc = before_acc == bddfalse ? bdd_false_ : before_acc;
 
             bdd to_add = previous_it_class_[src] & previous_it_class_[dst]
               & acc & sit->current_condition();
 
             // Include the signature implied by this transition in the
             // signature of this state.
-            res &= to_add;
+            res |= to_add;
             dst->destroy();
           }
 
           delete sit;
-          return res;
+          return res & rel_;
         }
 
         void update_sig()
@@ -160,7 +174,7 @@ namespace spot
           // At this time, current_class_ must be empty.  It implies
           // that the "previous_it_class_ = current_class_" must be
           // done before.
-          assert(!current_class_.size());
+          assert(current_class_.empty());
           Sgi::hash_set<const state*,
                         state_ptr_hash, state_ptr_equal> seen;
           std::queue<const state*> todo;
@@ -185,13 +199,13 @@ namespace spot
               // New state?
               if (seen.end() == seen.find(dst))
               {
-                // Register in the todo list
+                // Record in the todo list
                 todo.push(dst);
 
-                // Register in the already seen.
+                // Record in the already seen.
                 seen.insert(dst);
 
-                // Register in the right SPOT
+                // Record in the right SPOT
                 bdd_lstate_[compute_sig(dst)].push_back(dst);
               }
               else
@@ -208,7 +222,7 @@ namespace spot
 
         // The object which run through the automaton and replace all
         // acceptance condition by their complement.
-        AccComplAutomaton acc_compl_;
+        ComplAutomatonRecordState acc_compl_;
 
         // The bdd which represents the domination relation between the
         // class. It is the po.
@@ -216,9 +230,29 @@ namespace spot
 
         // Represent the class of each state at the previous iteration.
         map_state_bdd previous_it_class_;
+
+        // Previous bdd to list of state.
+        map_bdd_lstate previous_it_bdd_lstate_;
+
+        // The class at the current iteration.
+        map_state_bdd current_class_;
+
+        // The list of state for each class at the current_iteration.
+        // Computed in `update_sig'.
+        map_bdd_lstate bdd_lstate_;
+
+        // bddfalse is valid as acceptance condition, but it leads to
+        // destroy the meaning of the signature: a /\ bddfalse /\ ... = F.
+        // So this bdd_false will be the replacement of bddfalse.
+        bdd bdd_false_;
+
+        // The queue of free bdd. They will be used as the identifier
+        // for the class.
+        std::queue<int> free_var;
+
+        // The list of used bdd. They are in used as identifier for class.
+        std::list<bdd> used_var;
     };
-
-
   } // End namespace anonymous.
 
 
