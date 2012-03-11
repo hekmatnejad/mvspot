@@ -77,6 +77,40 @@ namespace spot
                      bdd_less_than> map_bdd_lstate;
 
 
+
+    // I was stuck here, because I need to run through the automaton, to
+    // complement the acceptance condition on transition, AND to register
+    // each state into a map, I'll create this class which inherits from
+    // AccComplAutomaton, and decorate its process state method.
+    class ComplAutomatonRecordState: public AccComplAutomaton
+    {
+        typedef AccComplAutomaton super_type;
+
+      public:
+        ComplAutomatonRecordState(tgba* a, bdd i)
+          : AccComplAutomaton(a),
+            init_(i)
+        {
+        }
+
+        // b and c are useless but needed to call the super_type method.
+        void process_state(const state* s, int b, tgba_succ_iterator* c)
+        {
+          super_type::process_state(s, b, c);
+
+          previous_it_class_[s] = init_;
+        }
+
+      public:
+        // We do not really need an encapsulation here. This object is here
+        // only to be copied after the run.
+        map_state_bdd previous_it_class_;
+
+        // We need to know the bdd which will be the initial class.
+        bdd init_;
+    };
+
+
     class Simulation
     {
       public:

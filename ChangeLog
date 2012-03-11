@@ -1,5 +1,13 @@
 2012-03-11  Thomas Badie  <thomas.badie@epita.fr>
 
+	Create a class to run through the tgba and record states.
+
+	* src/tgbaalgos/simulation.cc: Create a class
+	`ComplAutomatonRegisterState4 to record all states into an
+	hash_map.
+
+2012-03-11  Thomas Badie  <thomas.badie@epita.fr>
+
 	Add an update_sig method in Simulation.
 
 	* src/tgbaalgos/simulation.cc: Add a method to update the signature
