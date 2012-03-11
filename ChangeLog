@@ -1,5 +1,9 @@
 2012-03-11  Thomas Badie  <thomas.badie@epita.fr>
 
+	* src/tgbaalgos/simulation.hh, src/misc/acccompl.hh: Cosmetics.
+
+2012-03-11  Thomas Badie  <thomas.badie@epita.fr>
+
 	Improve the signature computation.
 
 	* src/tgbaalgos/simulation.cc: Add several member to the Simulation

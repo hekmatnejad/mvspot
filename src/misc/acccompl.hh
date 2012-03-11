@@ -19,8 +19,8 @@
 // 02111-1307, USA.
 
 
-#ifndef SPOT_MISC_ACCCOMPL_HH_
-# define SPOT_MISC_ACCCOMPL_HH_
+#ifndef SPOT_MISC_ACCCOMPL_HH
+# define SPOT_MISC_ACCCOMPL_HH
 
 #include <bdd.h>
 #include "misc/hash.hh"
@@ -99,4 +99,4 @@ namespace spot
 
 } // End namespace Spot
 
-#endif // !SPOT_MISC_ACCCOMPL_HH_
+#endif // !SPOT_MISC_ACCCOMPL_HH
