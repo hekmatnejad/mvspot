@@ -1,5 +1,12 @@
 2012-03-12  Thomas Badie  <thomas.badie@epita.fr>
 
+	Add the renaming between two iterations.
+
+	* src/tgbaalgos/simulation.cc: Add the renaming between two
+	iterations. Change some comment.
+
+2012-03-12  Thomas Badie  <thomas.badie@epita.fr>
+
 	* src/tgbaalgos/simulation.cc: Integrate rel_ into the signature.
 
 2012-03-11  Thomas Badie  <thomas.badie@epita.fr>
