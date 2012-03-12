@@ -1,3 +1,7 @@
+2012-03-12  Thomas Badie  <thomas.badie@epita.fr>
+
+	* src/tgbaalgos/simulation.cc: Integrate rel_ into the signature.
+
 2012-03-11  Thomas Badie  <thomas.badie@epita.fr>
 
 	* src/tgbaalgos/simulation.hh, src/misc/acccompl.hh: Cosmetics.

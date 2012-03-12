@@ -144,11 +144,11 @@ namespace spot
         }
 
 
-        bdd
-        compute_sig(state* src)
+        // Take a state and compute its Ni.
+        bdd compute_sig(state* src)
         {
           tgba_succ_iterator* sit = automata_->succ_iter(src);
-          bdd res = bddtrue;
+          bdd res = bddfalse;
 
           for (sit->first(); !sit->done(); sit->next())
           {
@@ -156,17 +156,25 @@ namespace spot
             bdd before_acc = sit->current_acceptance_conditions();
             bdd acc = before_acc == bddfalse ? bdd_false_ : before_acc;
 
+            // The rel_ is here to allow the bdd to know which class
+            // dominates another class.
             bdd to_add = previous_it_class_[src] & previous_it_class_[dst]
               & acc & sit->current_condition();
 
+            // I need to create temporary variable because otherwise,
+            // I've got a compilation error.
+            bdd left = (res | to_add) & rel_;
+            bdd right = res & rel_;
+
             // Include the signature implied by this transition in the
-            // signature of this state.
-            res |= to_add;
+            // signature of this state only if `to_add' is i-maximal.
+            if (left != right)
+              res |= to_add;
             dst->destroy();
           }
 
           delete sit;
-          return res & rel_;
+          return res;
         }
 
         void update_sig()
