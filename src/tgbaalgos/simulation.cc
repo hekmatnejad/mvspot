@@ -60,6 +60,12 @@
 // Obviously these functions are possibly cut into several little one.
 // This is just the general development idea.
 
+// Note from the 12/03:
+//   * We can switch the renaming before the update of the po.
+//   * Replace the stack in update_sig by a run through the map.
+//   * To make the complement of the output of the first run, we
+//   will use a loop through each variable, and make a or between
+//   "bdd_exists(neg, f) & f".
 
 
 namespace spot
@@ -157,6 +163,9 @@ namespace spot
           // FIXME: Currently, it is not inversible.
           // Re-invert the complement of all acceptance condition
           // acc_compl_.run();
+          // To invert, use: bdd_exists(neg, f) with f the result
+          // of the previous running.
+
         }
 
 
