@@ -1,5 +1,9 @@
 2012-03-12  Thomas Badie  <thomas.badie@epita.fr>
 
+	* src/tgbaalgos/simulation.cc: Comment changes.
+
+2012-03-12  Thomas Badie  <thomas.badie@epita.fr>
+
 	Add the renaming between two iterations.
 
 	* src/tgbaalgos/simulation.cc: Add the renaming between two
