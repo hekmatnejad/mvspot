@@ -77,7 +77,6 @@ namespace spot
                      bdd_less_than> map_bdd_lstate;
 
 
-
     // I was stuck here, because I need to run through the automaton, to
     // complement the acceptance condition on transition, AND to register
     // each state into a map, I'll create this class which inherits from
@@ -102,8 +101,8 @@ namespace spot
         }
 
       public:
-        // We do not really need an encapsulation here. This object is here
-        // only to be copied after the run.
+        // We do not really need an encapsulation here. This object is
+        // here only to be copied after the run.
         map_state_bdd previous_it_class_;
 
         // We need to know the bdd which will be the initial class.
@@ -116,16 +115,17 @@ namespace spot
       public:
         Simulation(const tgba* t)
           : automata_(const_cast<tgba*> (t)),
-            acc_compl_(automata_, bdd_ithvar(automata_
-                                             ->get_dict()
-                                             ->register_anonymous_variables
-                                               (1, automata_))),
+            acc_compl_(automata_,
+                       bdd_ithvar(automata_
+                                  ->get_dict()
+                                  ->register_anonymous_variables
+                                    (1, automata_))),
             bdd_false_(bdd_ithvar(automata_->get_dict()
-                                  ->register_anonymous_variables(1,
-                                                                 automata_)))
-
+                                  ->register_anonymous_variables
+                                    (1,
+                                     automata_)))
         {
-          used_var.push_back(acc_compl_.init_);
+          used_var_.push_back(acc_compl_.init_);
 
           rel_ = acc_compl_.init_ >> acc_compl_.init_;
 
@@ -133,7 +133,23 @@ namespace spot
           // conditions by their complement.
           acc_compl_.run();
 
+          size_automata_ = acc_compl_.size;
+
           previous_it_class_ = acc_compl_.previous_it_class_;
+
+          // Now, we have to get the bdd which will represent the
+          // class. We register one bdd by state, because in the worst
+          // case, |Class| == |State|.  In the call to
+          // register_anonymous_variables, there is a "size_automata_ -
+          // 1" because we have already register one.
+          unsigned set_num =
+            automata_
+              ->get_dict()
+              ->register_anonymous_variables(size_automata_ - 1,
+                                             automata_);
+
+          for (unsigned i = set_num; i < set_num + size_automata_ - 1; ++i)
+            free_var_.push(i);
         }
 
         ~Simulation()
@@ -154,6 +170,9 @@ namespace spot
           {
             const state* dst = sit->current_state();
             bdd before_acc = sit->current_acceptance_conditions();
+            // We want to have the information that the acceptance
+            // condition is bdd false. But if you keep bddfalse, our
+            // signature is meaningless.
             bdd acc = before_acc == bddfalse ? bdd_false_ : before_acc;
 
             // The rel_ is here to allow the bdd to know which class
@@ -223,6 +242,40 @@ namespace spot
           }
         }
 
+        // This method rename the color set.
+        void go_to_next_it()
+        {
+          int nb_new_color = bdd_lstate_.size() - used_var_.size();
+
+          for (int i = 0; i < nb_new_color; ++i)
+          {
+            assert(!free_var_.empty());
+            used_var_.push_back(bdd_ithvar(free_var_.front()));
+            free_var_.pop();
+          }
+
+          assert(bdd_lstate_.size() == used_var_.size());
+
+          // We run through the map bdd/list<state>, and we update
+          // the previous_it_class_ with the new data.
+          std::list<bdd>::iterator it_bdd = used_var_.begin();
+          for (map_bdd_lstate::iterator it = bdd_lstate_.begin();
+               it != bdd_lstate_.end();
+               ++it)
+          {
+            for (std::list<const state*>::iterator it_s = it->second.begin();
+                 it_s != it->second.end();
+                 ++it_s)
+            {
+              previous_it_class_[*it_s] = *it_bdd;
+            }
+            ++it_bdd;
+          }
+
+          // Now we need to update the po with these renamed color.
+          // No idea on how to do that.
+        }
+
 
       private:
         // The automaton which is simulated.
@@ -239,9 +292,6 @@ namespace spot
         // Represent the class of each state at the previous iteration.
         map_state_bdd previous_it_class_;
 
-        // Previous bdd to list of state.
-        map_bdd_lstate previous_it_bdd_lstate_;
-
         // The class at the current iteration.
         map_state_bdd current_class_;
 
@@ -256,10 +306,12 @@ namespace spot
 
         // The queue of free bdd. They will be used as the identifier
         // for the class.
-        std::queue<int> free_var;
+        std::queue<int> free_var_;
 
         // The list of used bdd. They are in used as identifier for class.
-        std::list<bdd> used_var;
+        std::list<bdd> used_var_;
+
+        unsigned int size_automata_;
     };
   } // End namespace anonymous.
 
