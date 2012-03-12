@@ -1,5 +1,12 @@
 2012-03-12  Thomas Badie  <thomas.badie@epita.fr>
 
+	Remove the graph traversal to optimize the algorithm.
+
+	* src/tgbaalgos/simulation.cc: Remove the traversal on the graph
+	in the update_sig method. Run through the hash_table instead.
+
+2012-03-12  Thomas Badie  <thomas.badie@epita.fr>
+
 	* src/tgbaalgos/simulation.cc: Comment changes.
 
 2012-03-12  Thomas Badie  <thomas.badie@epita.fr>

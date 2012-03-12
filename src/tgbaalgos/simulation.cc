@@ -170,7 +170,7 @@ namespace spot
 
 
         // Take a state and compute its Ni.
-        bdd compute_sig(state* src)
+        bdd compute_sig(const state* src)
         {
           tgba_succ_iterator* sit = automata_->succ_iter(src);
           bdd res = bddfalse;
@@ -211,44 +211,24 @@ namespace spot
           // that the "previous_it_class_ = current_class_" must be
           // done before.
           assert(current_class_.empty());
-          Sgi::hash_set<const state*,
-                        state_ptr_hash, state_ptr_equal> seen;
-          std::queue<const state*> todo;
 
-          state* init = automata_->get_init_state();
-          todo.push(init);
-
-          // Work on the initial state.
-          bdd_lstate_[compute_sig(init)].push_back(init);
-          seen.insert(init);
-
-          while (!todo.empty())
+          // Here we suppose that previous_it_class_ always contains
+          // all the reachable states of this automaton. We do not
+          // have to make (again) a traversal. We just have to run
+          // through this map.
+          for (map_state_bdd::iterator it = previous_it_class_.begin();
+               it != previous_it_class_.end();
+               ++it)
           {
-            const state* src = todo.front();
-            todo.pop();
+            const state* src = it->first;
 
-            tgba_succ_iterator* sit = automata_->succ_iter(src);
-            for (sit->first(); !sit->done(); sit->next())
-            {
-              state* dst = sit->current_state();
+            bdd_lstate_[compute_sig(src)].push_back(src);
+         }
 
-              // New state?
-              if (seen.end() == seen.find(dst))
-              {
-                // Record in the todo list
-                todo.push(dst);
+          // Now we have a new set of class, and we have to compute
+          // the update of the partial order.
 
-                // Record in the already seen.
-                seen.insert(dst);
 
-                // Record in the right SPOT
-                bdd_lstate_[compute_sig(dst)].push_back(dst);
-              }
-              else
-                dst->destroy();
-            }
-            delete sit;
-          }
         }
 
         // This method rename the color set.
