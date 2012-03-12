@@ -37,16 +37,19 @@ namespace spot
   class AccCompl
   {
     public:
-      AccCompl(bdd all)
-        : all_(all)
+      AccCompl(bdd all, bdd neg)
+        : all_(all),
+          neg_(neg)
       {
       }
 
 
       bdd complement(const bdd acc);
+      bdd reverse_complement(const bdd acc);
 
     protected:
       bdd all_;
+      bdd neg_;
       typedef Sgi::hash_map<bdd, bdd, bdd_hash> bdd_cache_t;
       bdd_cache_t cache_;
   };
@@ -60,7 +63,9 @@ namespace spot
         : tgba_reachable_iterator_depth_first(a),
           size(0),
           ea_(down_cast<tgba_explicit*> (a)),
-          ac_(ea_->all_acceptance_conditions())
+          ac_(ea_->all_acceptance_conditions(),
+              ea_->neg_acceptance_conditions()),
+          revert_(false)
       {
       }
 
@@ -81,12 +86,21 @@ namespace spot
         tgba_explicit::transition* t = ea_->get_transition(tmpit);
 
         t->acceptance_conditions
-          = ac_.complement(t->acceptance_conditions);
+          = revert_ ? ac_.reverse_complement(t->acceptance_conditions)
+                    : ac_.complement(t->acceptance_conditions);
       }
 
       void process_state(const state*, int, tgba_succ_iterator*)
       {
         ++size;
+      }
+
+      void revert()
+      {
+        revert_ = true;
+        run();
+        revert_ = false;
+
       }
 
     public:
@@ -95,6 +109,7 @@ namespace spot
     private:
       tgba_explicit* ea_;
       AccCompl ac_;
+      bool revert_;
   };
 
 } // End namespace Spot

@@ -29,6 +29,7 @@
 #include "ltlast/allnodes.hh"
 #include "misc/acccompl.hh"
 
+
 int
 main()
 {
@@ -41,25 +42,37 @@ main()
   typedef spot::tgba_explicit::transition trans;
 
   trans* t1 = a->create_transition("state 0", "state 1");
+  trans* t1_2 = a->create_transition("state 0", "state 2");
   trans* t2 = a->create_transition("state 1", "state 2");
   trans* t3 = a->create_transition("state 2", "state 0");
+  a->add_condition(t1, e.require("p1"));
+  a->add_condition(t1, e.require("p2"));
+  a->add_condition(t1_2, e.require("p1"));
   a->add_condition(t2, e.require("a"));
   a->add_condition(t3, e.require("b"));
   a->add_condition(t3, e.require("c"));
   a->declare_acceptance_condition(e.require("p"));
   a->declare_acceptance_condition(e.require("r"));
+  a->declare_acceptance_condition(e.require("s"));
   a->add_acceptance_condition(t1, e.require("p"));
+  a->add_acceptance_condition(t1, e.require("s"));
   a->add_acceptance_condition(t1, e.require("r"));
+  a->add_acceptance_condition(t2, e.require("r"));
+  a->add_acceptance_condition(t2, e.require("s"));
+  a->add_acceptance_condition(t3, e.require("s"));
 
+
+  spot::AccComplAutomaton*  a42 = new spot::AccComplAutomaton(a);
 
   spot::dotty_reachable(std::cout, a);
+  a42->run();
 
-  spot::AccComplAutomaton* comp = new spot::AccComplAutomaton(a);
-
-  comp->run();
+  spot::AccComplAutomaton*  a51 = new spot::AccComplAutomaton(a);
+  a51->revert();
   spot::dotty_reachable(std::cout, a);
 
-  delete comp;
+  delete a51;
+  delete a42;
   delete a;
   delete dict;
   assert(spot::ltl::atomic_prop::instance_count() == 0);

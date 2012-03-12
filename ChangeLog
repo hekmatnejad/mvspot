@@ -1,5 +1,14 @@
 2012-03-12  Thomas Badie  <thomas.badie@epita.fr>
 
+	Add a reverse_complementation method.
+
+	* src/misc/acccompl.cc, src/misc/acccompl.hh: Add a method
+	reverse_complement, which takes the automaton resulting from
+	a complementation, and take it into the previous state.
+	* src/tgbatest/acccompl.cc: Modify slightly the test.
+
+2012-03-12  Thomas Badie  <thomas.badie@epita.fr>
+
 	Remove the graph traversal to optimize the algorithm.
 
 	* src/tgbaalgos/simulation.cc: Remove the traversal on the graph
