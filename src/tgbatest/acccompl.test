@@ -1,0 +1,136 @@
+#!/bin/sh
+# Copyright (C) 2009, 2011 Laboratoire de Recherche et Développement
+# de l'Epita (LRDE).
+#
+# This file is part of Spot, a model checking library.
+#
+# Spot is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# Spot is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public
+# License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Spot; see the file COPYING.  If not, write to the Free
+# Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+# 02111-1307, USA.
+
+. ./defs
+
+set -e
+
+# This function catch the output of the acccompl program, and make
+# the split between before and after.
+# The output format is:
+# "digraph Initial {
+# ....
+# }
+# ------sed-me------
+# digraph BackToNormal {
+# ....
+# }"
+# And we have to make a diff between the beginning of the file to
+# the sed-me line, and after this line to the end. If this is equal,
+# the test pass.
+make_split_and_diff() {
+    run 0 ../acccompl $1 > stdout
+
+    # This piece of perl takes the file given in argument, reads it,
+    # matches the line "-----sed-me----" and affects $left and $right
+    # with the before and the after of the matching. And it returns
+    # one if the two strings are not equal.
+    perl -e "my \$file = shift;
+             open my \$fh, \$file;
+             local \$/ = undef;
+             my \$_ = <\$fh>;
+             my \$left;
+             my \$right;
+             s[-+sed-me-+\\n][\$left = \$\`; \$right = \$';]gosem;
+             print \"\$left\\nVS\\n\$right\" unless \$left eq \$right;
+             exit 1 unless \$left eq \$right;" stdout;
+
+
+    res=$?;
+    rm stdout
+    return $res
+}
+
+
+cat >input <<\EOF
+acc = c d;
+s1, s2, "a", c d;
+s1, s5, "a", c d;
+s2, s3, "a", c d;
+s2, s4, "a", c d;
+s5, s4, "a", c d;
+s5, s6, "a", c d;
+s3, s1, "a", c d;
+s4, s1, "a", c d;
+s6, s1, "a", c d;
+EOF
+
+make_split_and_diff input;
+rm input;
+
+cat >blue_counter <<'EOF'
+acc = a;
+s1, s2,, a;
+s2, s3,,;
+s3, s1,,;
+s3, s4,,;
+s4, s4,,;
+s4, s5,,;
+s4, s6,,;
+s4, s7,,;
+s4, s8,,;
+s4, s9,,;
+s5, s4,,;
+s5, s5,,;
+s5, s6,,;
+s5, s7,,;
+s5, s8,,;
+s5, s9,,;
+s6, s4,,;
+s6, s5,,;
+s6, s6,,;
+s6, s7,,;
+s6, s8,,;
+s6, s9,,;
+s7, s4,,;
+s7, s5,,;
+s7, s6,,;
+s7, s7,,;
+s7, s8,,;
+s7, s9,,;
+s8, s4,,;
+s8, s5,,;
+s8, s6,,;
+s8, s7,,;
+s8, s8,,;
+s8, s9,,;
+s9, s4,,;
+s9, s5,,;
+s9, s6,,;
+s9, s7,,;
+s9, s8,,;
+s9, s9,,;
+EOF
+
+make_split_and_diff blue_counter;
+rm blue_counter
+
+
+cat >input <<EOF
+acc = c d;
+s1, "s2", "a & !b", c d;
+"s2", "state 3", "a", c;
+"state 3", s1,,;
+EOF
+
+make_split_and_diff input;
+rm input;
+

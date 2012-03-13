@@ -1,5 +1,17 @@
 2012-03-13  Thomas Badie  <thomas.badie@epita.fr>
 
+	Test the complementation method.
+
+	* src/misc/acccompl.cc: Remove the debug prints.
+	* src/tgbatest/acccompl.cc: Now parse a tgba. Run
+	two times the complement algorithm.
+	* src/tgbatest/acccompl.test: New. Create tests for
+	complementation.
+	* src/tgbatest/Makefile.am (TESTS): Add acccompl.test.
+
+
+2012-03-13  Thomas Badie  <thomas.badie@epita.fr>
+
 	* src/tgbatest/Makefile.am (acccompl_SOURCES): Fix typo.
 
 2012-03-12  Thomas Badie  <thomas.badie@epita.fr>

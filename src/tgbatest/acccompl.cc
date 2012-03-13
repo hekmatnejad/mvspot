@@ -21,62 +21,54 @@
 // Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 // 02111-1307, USA.
 
+#include <list>
 #include <iostream>
-#include <cassert>
 #include "ltlenv/defaultenv.hh"
-#include "tgba/tgbaexplicit.hh"
+#include "tgbaparse/public.hh"
 #include "tgbaalgos/dotty.hh"
-#include "ltlast/allnodes.hh"
 #include "misc/acccompl.hh"
 
 
-int
-main()
+using namespace spot;
+
+
+int main(int argc,
+        char** argv)
 {
+  if (argc != 2)
+  {
+    std::cout << "Error in usage" << std::endl;
+    return 1;
+  }
+
   spot::bdd_dict* dict = new spot::bdd_dict();
 
-  spot::ltl::default_environment& e =
-    spot::ltl::default_environment::instance();
-  spot::tgba_explicit_string* a = new spot::tgba_explicit_string(dict);
+  tgba_parse_error_list pel;
 
-  typedef spot::tgba_explicit::transition trans;
+  std::string name(argv[1]);
 
-  trans* t1 = a->create_transition("state 0", "state 1");
-  trans* t1_2 = a->create_transition("state 0", "state 2");
-  trans* t2 = a->create_transition("state 1", "state 2");
-  trans* t3 = a->create_transition("state 2", "state 0");
-  a->add_condition(t1, e.require("p1"));
-  a->add_condition(t1, e.require("p2"));
-  a->add_condition(t1_2, e.require("p1"));
-  a->add_condition(t2, e.require("a"));
-  a->add_condition(t3, e.require("b"));
-  a->add_condition(t3, e.require("c"));
-  a->declare_acceptance_condition(e.require("p"));
-  a->declare_acceptance_condition(e.require("r"));
-  a->declare_acceptance_condition(e.require("s"));
-  a->add_acceptance_condition(t1, e.require("p"));
-  a->add_acceptance_condition(t1, e.require("s"));
-  a->add_acceptance_condition(t1, e.require("r"));
-  a->add_acceptance_condition(t2, e.require("r"));
-  a->add_acceptance_condition(t2, e.require("s"));
-  a->add_acceptance_condition(t3, e.require("s"));
+  spot::tgba* automata = tgba_parse(name, pel, dict);
+  if (!pel.empty())
+  {
+    spot::format_tgba_parse_errors(std::cerr, name, pel);
+    return 2;
+  }
 
+  spot::AccComplAutomaton*  acc1 = new spot::AccComplAutomaton(automata);
 
-  spot::AccComplAutomaton*  a42 = new spot::AccComplAutomaton(a);
+  spot::dotty_reachable(std::cout, automata);
+  acc1->run();
 
-  spot::dotty_reachable(std::cout, a);
-  a42->run();
+  std::cout << "--------sed-me---------" << std::endl;
 
-  spot::AccComplAutomaton*  a51 = new spot::AccComplAutomaton(a);
-  a51->revert();
-  spot::dotty_reachable(std::cout, a);
+  spot::AccComplAutomaton*  acc2 = new spot::AccComplAutomaton(automata);
+  acc2->revert();
+  spot::dotty_reachable(std::cout, automata);
 
-  delete a51;
-  delete a42;
-  delete a;
+  delete acc1;
+  delete acc2;
+  delete automata;
   delete dict;
-  assert(spot::ltl::atomic_prop::instance_count() == 0);
-  assert(spot::ltl::unop::instance_count() == 0);
-  assert(spot::ltl::binop::instance_count() == 0);
-  assert(spot::ltl::multop::instance_count() == 0);
+
+  return 0;
 }
