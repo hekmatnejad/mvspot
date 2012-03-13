@@ -75,6 +75,7 @@ tripprod_SOURCES = tripprod.cc
 # Keep this sorted by STRENGTH.  Test basic things first,
 # because such failures will be easier to diagnose and fix.
 TESTS = \
+  acccompl.test \
   intvcomp.test \
   eltl2tgba.test \
   explicit.test \

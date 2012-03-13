@@ -72,13 +72,10 @@ namespace spot
 
   bdd AccCompl::reverse_complement(const bdd acc)
   {
-    std::cout << "\n\n New acc!\nacc: " << acc << std::endl;
-
     // We are sure that if we have no acceptance condition
     // the result is all_.
     if (acc == bddfalse)
       return all_;
-
 
     // Since we never cache a unique positive bdd, we can reuse the
     // same cache.
@@ -94,12 +91,9 @@ namespace spot
 
     while (cond != bddtrue)
     {
-      std::cout << "\nnew iteration" << std::endl;
       bdd one;
 
       one = bdd_ithvar(bdd_var(cond));
-
-      std::cout << "one: " << one << std::endl;
 
       // Because it is a conjunction of positive bdd, we just have to
       // traverse through the high branch.
@@ -109,30 +103,12 @@ namespace spot
       // `one'.
       bdd n = bdd_exist(neg_, one) & one;
 
-      std::cout << "n: " << n << std::endl;
       res -= n;
-      std::cout << "res: " << res << std::endl;
     }
-
-    std::cout << "After loop res: " << res << std::endl;
-
-    // // Without this line, instead of having on a transition (without
-    // // any acceptance condition before complementation), we got neg.
-    // // So to have the right thing, if we got neg, we change it to
-    // // bddfalse.
-    // if (res == neg_)
-    //   res = bddfalse;
-
-
 
     cache_[acc] = res;
 
-
     return res;
   }
-
-
-
-
 
 } // End namespace spot.
