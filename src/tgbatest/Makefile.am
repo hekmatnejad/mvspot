@@ -50,7 +50,7 @@ check_PROGRAMS = \
   tripprod
 
 # Keep this sorted alphabetically.
-accompl_SOURCES = acccompl.cc
+acccompl_SOURCES = acccompl.cc
 bddprod_SOURCES  = ltlprod.cc
 bddprod_CXXFLAGS = -DBDD_CONCRETE_PRODUCT
 complement_SOURCES = complementation.cc
