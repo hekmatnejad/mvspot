@@ -62,10 +62,6 @@
 
 // Note from the 12/03:
 //   * We can switch the renaming before the update of the po.
-//   * Replace the stack in update_sig by a run through the map.
-//   * To make the complement of the output of the first run, we
-//   will use a loop through each variable, and make a or between
-//   "bdd_exists(neg, f) & f".
 
 
 namespace spot
@@ -121,27 +117,29 @@ namespace spot
       public:
         Simulation(const tgba* t)
           : automata_(const_cast<tgba*> (t)),
-            acc_compl_(automata_,
-                       bdd_ithvar(automata_
-                                  ->get_dict()
-                                  ->register_anonymous_variables
-                                    (1, automata_))),
             bdd_false_(bdd_ithvar(automata_->get_dict()
                                   ->register_anonymous_variables
                                     (1,
                                      automata_)))
         {
-          used_var_.push_back(acc_compl_.init_);
+          ComplAutomatonRecordState
+            acc_compl(automata_,
+                      bdd_ithvar(automata_
+                                 ->get_dict()
+                                 ->register_anonymous_variables
+                                 (1, automata_)));
 
-          rel_ = acc_compl_.init_ >> acc_compl_.init_;
+          used_var_.push_back(acc_compl.init_);
+
+          rel_ = acc_compl.init_ >> acc_compl.init_;
 
           // We'll start our work by replacing all the acceptance
           // conditions by their complement.
-          acc_compl_.run();
+          acc_compl.run();
 
-          size_automata_ = acc_compl_.size;
+          size_automata_ = acc_compl.size;
 
-          previous_it_class_ = acc_compl_.previous_it_class_;
+          previous_it_class_ = acc_compl.previous_it_class_;
 
           // Now, we have to get the bdd which will represent the
           // class. We register one bdd by state, because in the worst
@@ -160,12 +158,9 @@ namespace spot
 
         ~Simulation()
         {
-          // FIXME: Currently, it is not inversible.
-          // Re-invert the complement of all acceptance condition
-          // acc_compl_.run();
-          // To invert, use: bdd_exists(neg, f) with f the result
-          // of the previous running.
+          AccComplAutomaton acc_compl(automata_);
 
+          acc_compl.revert();
         }
 
 
@@ -269,10 +264,6 @@ namespace spot
       private:
         // The automaton which is simulated.
         tgba* automata_;
-
-        // The object which run through the automaton and replace all
-        // acceptance condition by their complement.
-        ComplAutomatonRecordState acc_compl_;
 
         // The bdd which represents the domination relation between the
         // class. It is the po.

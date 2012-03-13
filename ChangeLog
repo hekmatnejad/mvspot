@@ -1,3 +1,10 @@
+2012-03-14  Thomas Badie  <thomas.badie@epita.fr>
+
+	Use revert method of AccComplAutomaton in Simulation.
+
+	* src/tgbaalgos/simulation.cc: Update the use of
+	AccComplementAutomaton according to its change.
+
 2012-03-13  Thomas Badie  <thomas.badie@epita.fr>
 
 	Test the complementation method.
