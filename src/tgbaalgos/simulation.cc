@@ -114,6 +114,8 @@ namespace spot
 
     class Simulation
     {
+        // Shortcut used in update_po and go_to_next_it.
+        typedef std::map<bdd, bdd, bdd_less_than> map_bdd_bdd;
       public:
         Simulation(const tgba* t)
           : automata_(const_cast<tgba*> (t)),
@@ -164,6 +166,15 @@ namespace spot
         }
 
 
+        tgba* run()
+        {
+          update_sig();
+          go_to_next_it();
+
+          return 0;
+        }
+
+
         // Take a state and compute its Ni.
         bdd compute_sig(const state* src)
         {
@@ -184,15 +195,19 @@ namespace spot
             bdd to_add = previous_it_class_[src] & previous_it_class_[dst]
               & acc & sit->current_condition();
 
-            // I need to create temporary variable because otherwise,
-            // I've got a compilation error.
-            bdd left = (res | to_add) & rel_;
-            bdd right = res & rel_;
 
-            // Include the signature implied by this transition in the
-            // signature of this state only if `to_add' is i-maximal.
-            if (left != right)
-              res |= to_add;
+            // In fact, I don't think rel_ must be used here, but only in
+            // the final computation, that's why there is comments.
+
+            // // I need to create temporary variable because otherwise,
+            // // I've got a compilation error.
+            // bdd left = (res | to_add) & rel_;
+            // bdd right = res & rel_;
+
+            // // Include the signature implied by this transition in the
+            // // signature of this state only if `to_add' is i-maximal.
+            // if (left != right)
+            res |= to_add;
             dst->destroy();
           }
 
@@ -218,15 +233,10 @@ namespace spot
             const state* src = it->first;
 
             bdd_lstate_[compute_sig(src)].push_back(src);
-         }
-
-          // Now we have a new set of class, and we have to compute
-          // the update of the partial order.
-
-
+          }
         }
 
-        // This method rename the color set.
+        // This method rename the color set, update the partial order.
         void go_to_next_it()
         {
           int nb_new_color = bdd_lstate_.size() - used_var_.size();
@@ -240,9 +250,29 @@ namespace spot
 
           assert(bdd_lstate_.size() == used_var_.size());
 
+          // Now we make a temporary hash_table which links the tuple
+          // "C^(i-1), N^(i-1)" to the new class coloring.  If we
+          // rename the class before updating the partial order, we
+          // loose the information, and if we make it after, I can't
+          // figure out how to apply this renaming on rel_.
+          // It adds a data structure but it solves our problem.
+          map_bdd_bdd now_to_next;
+
+          std::list<bdd>::iterator it_bdd = used_var_.begin();
+
+          for (map_bdd_lstate::iterator it = bdd_lstate_.begin();
+               it != bdd_lstate_.end();
+               ++it)
+          {
+            now_to_next[it->first] = *it_bdd;
+            ++it_bdd;
+          }
+
+          update_po(now_to_next);
+
           // We run through the map bdd/list<state>, and we update
           // the previous_it_class_ with the new data.
-          std::list<bdd>::iterator it_bdd = used_var_.begin();
+          it_bdd = used_var_.begin();
           for (map_bdd_lstate::iterator it = bdd_lstate_.begin();
                it != bdd_lstate_.end();
                ++it)
@@ -255,9 +285,33 @@ namespace spot
             }
             ++it_bdd;
           }
+        }
 
-          // Now we need to update the po with these renamed color.
-          // No idea on how to do that.
+        // This function compute the new po with previous_it_class_
+        // and the argument. `now_to_next' contains the relation
+        // "C^(i-1)&N^(i-1)" -> "A" and `next_to_now' contains the
+        // opposite.
+        void update_po(const map_bdd_bdd& now_to_next)
+        {
+          bdd new_rel = bddtrue;
+
+          for (map_bdd_bdd::const_iterator it1 = now_to_next.begin();
+               it1 != now_to_next.end();
+               ++it1)
+          {
+            for (map_bdd_bdd::const_iterator it2 = now_to_next.begin();
+                 it2 != now_to_next.end();
+                 ++it2)
+            {
+              bdd left = it1->first & it2->first & rel_;
+              bdd right = it1->first & rel_;
+
+              if ((left & right) == right)
+                new_rel &= (it1->second >> it2->second);
+            }
+          }
+
+          rel_ = new_rel;
         }
 
 
