@@ -1,3 +1,10 @@
+2012-03-15  Thomas Badie  <badie@lrde.epita.fr>
+
+	Implement the update of the partial order.
+
+	* src/tgbaalgos/simulation.cc: Implement the update of the
+	partial order. Create a run method.
+
 2012-03-14  Thomas Badie  <badie@lrde.epita.fr>
 
 	Use revert method of AccComplAutomaton in Simulation.
