@@ -72,7 +72,13 @@ namespace spot
 
     // Used to get the signature of the state.
     typedef Sgi::hash_map<const state*, bdd,
-                          state_ptr_hash, state_ptr_equal> map_state_bdd;
+                          state_ptr_hash,
+                          state_ptr_equal> map_state_bdd;
+
+    typedef Sgi::hash_map<const state*, unsigned,
+                          state_ptr_hash,
+                          state_ptr_equal> map_state_unsigned;
+
 
     // Get the list of state for each class.
     typedef std::map<bdd, std::list<const state*>,
@@ -171,7 +177,7 @@ namespace spot
           update_sig();
           go_to_next_it();
 
-          return 0;
+          return build_result();
         }
 
 
@@ -313,6 +319,69 @@ namespace spot
 
           rel_ = new_rel;
         }
+
+
+        // From the base automaton and the map bdd_lstate_, build the
+        // minimal resulting automaton
+        tgba* build_result()
+        {
+          // For each list, create a state in the resulting automaton.
+          // For a state s, state_num[s] is the number id of this
+          // state in the minimal automaton.
+          map_state_unsigned state_num;
+          map_bdd_lstate::iterator sit;
+          unsigned num = 0;
+          for (sit = bdd_lstate_.begin(); sit != bdd_lstate_.end(); ++sit)
+          {
+            std::list<const state*> h = sit->second;
+            for (std::list<const state*>::const_iterator lit = h.begin();
+                 lit != h.end();
+                 ++lit)
+              state_num[*lit] = num;
+            ++num;
+          }
+
+          typedef tgba_explicit_number::transition trs;
+          tgba_explicit_number* res
+            = new tgba_explicit_number(automata_->get_dict());
+          res->set_acceptance_conditions
+            (automata_->all_acceptance_conditions());
+
+          // For each transition in the initial automaton, add the
+          // corresponding transition in res.
+          for (sit = bdd_lstate_.begin(); sit != bdd_lstate_.end(); ++sit)
+          {
+            std::list<const state*>::const_iterator hit;
+            std::list<const state*> l = sit->second;
+            // Pick one state.
+            const state* src = *(l.begin());
+            unsigned src_num = state_num[src];
+            // Connect it to all destinations.
+            tgba_succ_iterator* succit = automata_->succ_iter(src);
+            for (succit->first(); !succit->done(); succit->next())
+            {
+              const state* dst = succit->current_state();
+              map_state_unsigned::const_iterator i = state_num.find(dst);
+              dst->destroy();
+              if (i == state_num.end()) // Ignore useless destinations.
+                continue;
+              trs* t = res->create_transition(src_num, i->second);
+              res->add_conditions(t, succit->current_condition());
+              bdd cond = succit->current_acceptance_conditions();
+              if (cond != bddfalse)
+                res->add_acceptance_conditions(t, cond);
+            }
+            delete succit;
+          }
+
+          res->merge_transitions();
+          const state* init_state = automata_->get_init_state();
+          unsigned init_num = state_num[init_state];
+          init_state->destroy();
+          res->set_init_state(init_num);
+          return res;
+        }
+
 
 
       private:
