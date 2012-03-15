@@ -1,3 +1,11 @@
+2012-03-16  Thomas Badie  <badie@lrde.epita.fr>
+
+	Fix the build_result, Fix the signature computation.
+
+	* src/tgbaalgos/simulation.cc: Fix the build_result by changing
+	the rule of adding a transition.  Implement run.  Change the way
+	we compute the signature.
+
 2012-03-15  Thomas Badie  <badie@lrde.epita.fr>
 
 	Test the simulation.
