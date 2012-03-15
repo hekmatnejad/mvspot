@@ -45,6 +45,7 @@ check_PROGRAMS = \
   powerset \
   reductgba \
   reduccmp \
+  simulation \
   taatgba \
   tgbaread \
   tripprod
@@ -68,6 +69,7 @@ randtgba_SOURCES = randtgba.cc
 reductgba_SOURCES = reductgba.cc
 reduccmp_SOURCES = reductgba.cc
 reduccmp_CXXFLAGS = -DREDUCCMP
+simulation_SOURCES = simulation.cc
 taatgba_SOURCES = taatgba.cc
 tgbaread_SOURCES = tgbaread.cc
 tripprod_SOURCES = tripprod.cc
@@ -75,6 +77,7 @@ tripprod_SOURCES = tripprod.cc
 # Keep this sorted by STRENGTH.  Test basic things first,
 # because such failures will be easier to diagnose and fix.
 TESTS = \
+  simulation.test \
   acccompl.test \
   intvcomp.test \
   eltl2tgba.test \
