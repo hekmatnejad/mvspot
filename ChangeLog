@@ -1,5 +1,9 @@
 2012-03-15  Thomas Badie  <badie@lrde.epita.fr>
 
+	* src/tgbaalgos/simulation.cc: Implement build_result.
+
+2012-03-15  Thomas Badie  <badie@lrde.epita.fr>
+
 	Implement the update of the partial order.
 
 	* src/tgbaalgos/simulation.cc: Implement the update of the
