@@ -1,5 +1,14 @@
 2012-03-15  Thomas Badie  <badie@lrde.epita.fr>
 
+	Test the simulation.
+
+	* src/tgbatest/simulation.cc: New. The source for the test.
+	* src/tgbatest/simulation.test: New. Create a test for the
+	simulation.
+	* src/tgbatest/Makefile.am: Add the test in the Makefile.
+
+2012-03-15  Thomas Badie  <badie@lrde.epita.fr>
+
 	* src/tgbaalgos/simulation.cc: Implement build_result.
 
 2012-03-15  Thomas Badie  <badie@lrde.epita.fr>
