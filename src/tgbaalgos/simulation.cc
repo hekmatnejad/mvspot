@@ -134,7 +134,8 @@ namespace spot
                                   ->register_anonymous_variables
                                     (1,
                                      automata_))),
-            po_size_(0)
+            po_size_(0),
+            all_class_var_(bddtrue)
         {
           ComplAutomatonRecordState
             acc_compl(automata_,
@@ -144,8 +145,8 @@ namespace spot
                                  (1, automata_)));
 
           used_var_.push_back(acc_compl.init_);
+          all_class_var_ = acc_compl.init_;
 
-          rel_ = acc_compl.init_ >> acc_compl.init_;
 
           // We'll start our work by replacing all the acceptance
           // conditions by their complement.
@@ -167,7 +168,10 @@ namespace spot
                                              automata_);
 
           for (unsigned i = set_num; i < set_num + size_automata_ - 1; ++i)
+          {
             free_var_.push(i);
+            all_class_var_ &= bdd_ithvar(i);
+          }
         }
 
         ~Simulation()
@@ -495,6 +499,9 @@ namespace spot
         // Used to know when there is no evolution in the po. Updated
         // in the `update_po' method.
         unsigned int po_size_;
+
+        // All the class variable:
+        bdd all_class_var_;
     };
   } // End namespace anonymous.
 
