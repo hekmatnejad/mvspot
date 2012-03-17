@@ -26,9 +26,29 @@ set -e
 
 cat >input <<\EOF
 acc = d;
-s1, s2, "a", ;
-s1, s3, "a&b", d;
+s1, s2, "a", d;
+s1, s3, "a&b",;
 s2, s2, "1", d;
+s3, s3, "a", d;
+EOF
+
+run 0 ../simulation input
+
+rm input;
+
+cat >input <<\EOF
+acc = "a" "XXGc";
+"XGc & (a M (XXGc M d))", "Gc & XGc", "a & d", "a" "XXGc";
+"XGc & (a M (XXGc M d))", "Gc & (XXGc M d)", "a & d", "a";
+"XGc & (a M (XXGc M d))", "Gc & XGc & (a M (XXGc M d))", "d", "XXGc";
+"XGc & (a M (XXGc M d))", "Gc & XGc & (a M (XXGc M d))", "d",;
+"Gc & XGc", "Gc & XGc", "c", "a" "XXGc";
+"Gc & (XXGc M d)", "Gc & XGc", "c & d", "a" "XXGc";
+"Gc & (XXGc M d)", "Gc & (XXGc M d)", "c & d", "a";
+"Gc & XGc & (a M (XXGc M d))", "Gc & XGc", "c & a & d", "a" "XXGc";
+"Gc & XGc & (a M (XXGc M d))", "Gc & (XXGc M d)", "c & a & d", "a";
+"Gc & XGc & (a M (XXGc M d))", "Gc & XGc & (a M (XXGc M d))", "c & d", "XXGc";
+"Gc & XGc & (a M (XXGc M d))", "Gc & XGc & (a M (XXGc M d))", "c & d",;
 EOF
 
 run 0 ../simulation input
