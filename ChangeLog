@@ -1,3 +1,8 @@
+2012-04-04  Thomas Badie  <badie@lrde.epita.fr>
+
+	* src/tgbaalgos/simulation.cc: Solve the problem of the state
+	source and destination.
+
 2012-03-16  Thomas Badie  <badie@lrde.epita.fr>
 
 	Fix the build_result, Fix the signature computation.

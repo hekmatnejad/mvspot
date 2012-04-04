@@ -433,28 +433,6 @@ namespace spot
           return bdd_ithvar(bdd_var(in)) & strip_neg(bdd_high(in));
         }
 
-        // This is a little function to get the state corresponding to
-        // this bdd.
-        inline
-        int get_state(std::map<bdd, unsigned, bdd_less_than>& bdd2state,
-                      bdd me,
-                      unsigned int& current_max,
-                      tgba_explicit_number* res)
-        {
-          std::cout << "me: " << me << std::endl;
-          if (bdd2state.find(me) == bdd2state.end())
-          {
-            bdd2state[me] = ++current_max;
-            res->add_state(current_max);
-          }
-
-          std::cout << "bdd2state.size(): " << bdd2state.size() << std::endl;
-          assert(current_max <= bdd_lstate_.size());
-
-          return bdd2state[me];
-        }
-
-
         bdd normalize(bdd in)
         {
           bdd res = bddfalse;
@@ -475,12 +453,13 @@ namespace spot
         {
           tgba_succ_iterator* sit = automata_->succ_iter(src);
           bdd res = bddfalse;
+          bdd clone_res = res;
 
           for (sit->first(); !sit->done(); sit->next())
           {
             const state* dst = sit->current_state();
             bdd before_acc
-              = strip_neg_acc(bdd_support(sit->current_acceptance_conditions()));
+              = bdd_support(sit->current_acceptance_conditions());
 
             // We want to have the information that the acceptance
             // condition is bdd false. But if you keep bddfalse, our
@@ -491,10 +470,16 @@ namespace spot
             // dominates another class.
             bdd to_add = acc & sit->current_condition()
               & relation_[previous_it_class_[dst]];
+            bdd clone_to_add = acc & sit->current_condition()
+              & previous_it_class_[dst];
 
             // Include the signature implied by this transition in the
             // signature of this state only if `to_add' is i-maximal.
-            res |= to_add;
+            if (((clone_res | clone_to_add) & rel_) != (clone_res & rel_))
+            {
+              res |= to_add;
+              clone_res |= clone_to_add;
+            }
             dst->destroy();
           }
 
@@ -516,8 +501,6 @@ namespace spot
           // we have does not exist.
           std::map<bdd, unsigned, bdd_less_than> bdd2state;
           unsigned int current_max = 0;
-          (void)current_max;
-          (void)bdd2state;
 
           bdd all_acceptance_conditions
             = automata_->all_acceptance_conditions();
@@ -536,7 +519,14 @@ namespace spot
           res->set_acceptance_conditions
             (all_acceptance_conditions);
 
-          // print_partition();
+          for (map_bdd_lstate::iterator it = bdd_lstate_.begin();
+               it != bdd_lstate_.end(); ++it)
+          {
+            res->add_state(++current_max);
+            bdd part = previous_it_class_[*it->second.begin()];
+            bdd2state[part] = current_max;
+            bdd2state[relation_[part]] = current_max;
+          }
 
           // For each partition, we will create a state, and create
           // all these transitions.
@@ -544,7 +534,7 @@ namespace spot
                it != bdd_lstate_.end();
                ++it)
           {
-            bdd sig = compute_sig_for_build(*(it->second.begin()));//normalize(it->first);
+            bdd sig = compute_sig_for_build(*(it->second.begin()));
             bdd sup_sig = bdd_support(sig);
             bdd sup_all_acc = bdd_support(all_acceptance_conditions);
             // Non atomic propositions variables (= acc and class)
@@ -557,9 +547,7 @@ namespace spot
                       << std::endl;
 
             std::cout << "sig: " << sig
-//                      << "\nnonapvars: " << nonapvars
-//                      << "\nall_atomic_prop: " << all_atomic_prop
-                      << std::endl;
+                      << std::endl << std::endl;
 
             while (all_atomic_prop != bddfalse)
             {
@@ -577,34 +565,21 @@ namespace spot
               {
                 bdd dest = bdd_existcomp(cond_acc_dest,
                                          all_class_var_);
-                bdd acc
-                  = strip_neg_acc(bdd_support(bdd_existcomp(cond_acc_dest, sup_all_acc)));
+                bdd acc = bdd_existcomp(cond_acc_dest, sup_all_acc);
                 bdd cond = bdd_existcomp(cond_acc_dest, sup_all_atomic_prop);
-
-//                std::cout << "acc1: " << acc << std::endl;
 
                 acc = reverser.reverse_complement(acc);
 
-                // std::cout << "cond_acc_dest: " << cond_acc_dest << std::endl;
-                // std::cout << "acc: " << acc << std::endl;
-                // std::cout << "cond: " << cond << std::endl;
-                // std::cout << "dest: " << dest << std::endl;
+                int src = bdd2state[previous_it_class_[*it->second.begin()]];
+                int dst = bdd2state[dest];
 
-                // std::cout << "src: " << previous_it_class_[*it->second.begin()]
-                //           << std::endl;
-
-                int src = get_state(bdd2state,
-                                    relation_[previous_it_class_[*it->second.begin()]],
-                                    current_max,
-                                    res);
-                int dst = get_state(bdd2state,
-                                    dest,
-                                    current_max,
-                                    res);
+                // src or dst == 0 means "dest" or "prev..." isn't in the map.
+                // so it is a bug.
+                assert(src != 0);
+                assert(dst != 0);
 
                 std::cout << "src -> dst: " << src << " -> " << dst << std::endl;
-                std::cout << "acc: " << acc << "; cond: " << cond
-                          << std::endl <<  std::endl;
+                std::cout << "acc: " << acc << "; cond" << std::endl;
 
                 tgba_explicit_number::transition* t
                   = res->create_transition(src , dst);
@@ -614,12 +589,8 @@ namespace spot
             }
           }
 
-          res->set_init_state(get_state(bdd2state,
-                                        previous_it_class_
-                                          [automata_->get_init_state()],
-                                        current_max,
-                                        res));
-
+          res->set_init_state(bdd2state[previous_it_class_
+                                         [automata_->get_init_state()]]);
           res->merge_transitions();
           return res;
         }
@@ -638,7 +609,7 @@ namespace spot
                  it_s != it->second.end();
                  ++it_s)
             {
-              std::cout << "\t- "
+              std::cout << "  - "
                         << automata_->format_state(*it_s) << std::endl;
             }
           }
