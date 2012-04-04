@@ -1,3 +1,7 @@
+2012-04-04  Thomas Badie  <badie@lrde.epita.fr>
+
+	* src/tgbatest/ltl2tgba.cc: Add the simulation.
+
 2012-03-16  Thomas Badie  <badie@lrde.epita.fr>
 
 	Fix the build_result, Fix the signature computation.
