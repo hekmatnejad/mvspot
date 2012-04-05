@@ -1,5 +1,9 @@
 2012-04-05  Thomas Badie  <badie@lrde.epita.fr>
 
+	* src/tgba/tgbaexplicit.cc: Fix a bug in current_acceptance_conditions.
+
+2012-04-05  Thomas Badie  <badie@lrde.epita.fr>
+
 	* src/tgbaalgos/simulation.cc (spot): Fix a bug in strip_neg_acc.
 
 2012-04-05  Thomas Badie  <badie@lrde.epita.fr>

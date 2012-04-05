@@ -78,7 +78,7 @@ namespace spot
   tgba_explicit_succ_iterator::current_acceptance_conditions() const
   {
     assert(!done());
-    return i_->acceptance_conditions & all_acceptance_conditions_;
+    return i_->acceptance_conditions;
   }
 
 
