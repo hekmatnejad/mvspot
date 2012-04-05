@@ -100,7 +100,6 @@ namespace spot
         revert_ = true;
         run();
         revert_ = false;
-
       }
 
     public:

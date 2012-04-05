@@ -245,11 +245,11 @@ namespace spot
           {
             const state* dst = sit->current_state();
 
-            bdd before_acc = sit->current_acceptance_conditions();
+            bdd acc = sit->current_acceptance_conditions();
             // We want to have the information that the acceptance
             // condition is bdd false. But if you keep bddfalse, our
             // signature is meaningless.
-            bdd acc = before_acc == bddfalse ? bddtrue : before_acc;
+//            bdd acc = before_acc == bddfalse ? bddtrue : before_acc;
 //            acc = strip_neg_acc(acc);
 #if 0
             // std::cout << "previous_it_class_ dst: "
@@ -383,12 +383,12 @@ namespace spot
           for (sit->first(); !sit->done(); sit->next())
           {
             const state* dst = sit->current_state();
-            bdd before_acc = sit->current_acceptance_conditions();
+            bdd acc = sit->current_acceptance_conditions();
 
             // We want to have the information that the acceptance
             // condition is bdd false. But if you keep bddfalse, our
             // signature is meaningless.
-            bdd acc = before_acc == bddfalse ? bddtrue : before_acc;
+            //bdd acc = before_acc == bddfalse ? bddtrue : before_acc;
             // acc = strip_neg_acc(acc);
             // The rel_ is here to allow the bdd to know which class
             // dominates another class.

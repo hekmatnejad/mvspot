@@ -47,7 +47,7 @@ namespace spot
     // This means, if acc == all, the opposite is bddfalse, and not
     // bddtrue.
     if (n == bddfalse)
-      res = bddfalse;
+      res = bddtrue;
 
     while (n != bddfalse)
     {
@@ -74,7 +74,7 @@ namespace spot
   {
     // We are sure that if we have no acceptance condition
     // the result is all_.
-    if (acc == bddfalse)
+    if (acc == bddtrue)
       return all_;
 
     // Since we never cache a unique positive bdd, we can reuse the

@@ -1,5 +1,11 @@
 2012-04-05  Thomas Badie  <badie@lrde.epita.fr>
 
+	* src/misc/acccompl.cc: If we receive all acc, we return true
+	instead of false.
+	* src/tgbaalgos/simulation.cc: Remove 'before_acc' accordingly.
+
+2012-04-05  Thomas Badie  <badie@lrde.epita.fr>
+
 	* src/tgbaalgos/simulation.cc: Remove useless code.
 
 2012-04-05  Thomas Badie  <badie@lrde.epita.fr>
