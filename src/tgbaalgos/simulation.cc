@@ -453,7 +453,6 @@ namespace spot
         {
           tgba_succ_iterator* sit = automata_->succ_iter(src);
           bdd res = bddfalse;
-          bdd clone_res = res;
 
           for (sit->first(); !sit->done(); sit->next())
           {
@@ -470,16 +469,8 @@ namespace spot
             // dominates another class.
             bdd to_add = acc & sit->current_condition()
               & relation_[previous_it_class_[dst]];
-            bdd clone_to_add = acc & sit->current_condition()
-              & previous_it_class_[dst];
 
-            // Include the signature implied by this transition in the
-            // signature of this state only if `to_add' is i-maximal.
-            if (((clone_res | clone_to_add) & rel_) != (clone_res & rel_))
-            {
-              res |= to_add;
-              clone_res |= clone_to_add;
-            }
+            res |= to_add;
             dst->destroy();
           }
 

@@ -1,3 +1,8 @@
+2012-04-05  Thomas Badie  <badie@lrde.epita.fr>
+
+	* src/tgbaalgos/simulation.cc: Remove useless computation
+	in compute_sig_for_build.
+
 2012-04-04  Thomas Badie  <badie@lrde.epita.fr>
 
 	* src/tgbaalgos/simulation.cc: Solve the problem of the state
