@@ -27,6 +27,7 @@
 #include "simulation.hh"
 #include "misc/acccompl.hh"
 #include "misc/minato.hh"
+//#include "tgba/bddprint.hh"
 
 // The way we will develop this algorithm is the following:
 // We'll take an automaton, and reverse all these acceptance conditions.
@@ -133,7 +134,6 @@ namespace spot
       public:
         Simulation(const tgba* t)
           : automata_(const_cast<tgba*> (t)),
-            rel_(bddtrue),
             bdd_false_(bdd_ithvar(automata_->get_dict()
                                   ->register_anonymous_variables
                                     (1,
@@ -230,18 +230,6 @@ namespace spot
 
           return build_result();
         }
-
-        bdd strip_neg_acc(bdd in)
-        {
-          if (in == bddtrue)
-            return bddtrue;
-          assert(in != bddfalse);
-          if (bdd_high(in) == bddfalse)
-            return strip_neg_acc(bdd_low(in));
-          assert(bdd_low(in) == bddfalse);
-          return bdd_ithvar(bdd_var(in)) & strip_neg_acc(bdd_high(in));
-        }
-
 
         // Take a state and compute its Ni.
         bdd compute_sig(const state* src)
@@ -385,51 +373,7 @@ namespace spot
             }
             relation_[it1->second] = accu;
           }
-
-          rel_ = new_rel;
         }
-
-        // This function is a temporary hack to solve the problem
-        // implied by including rel_ in the signature. It takes a bdd
-        // which is a conjunction of variable, and returns its bdd
-        // without the variable which are in all_class_var_ and which
-        // are negative.
-        bdd strip_neg(bdd in)
-        {
-          if (in == bddtrue)
-            return bddtrue;
-          assert(in != bddfalse);
-          // If the current var doesn't appear in rel_, we keep it
-          // as in the original.
-          if (bdd_exist(rel_, bdd_ithvar(bdd_var(in))) == rel_)
-          {
-            if (bdd_high(in) == bddfalse)
-              return bdd_nithvar(bdd_var(in)) & strip_neg(bdd_low(in));
-            else
-              return bdd_ithvar(bdd_var(in)) & strip_neg(bdd_high(in));
-          }
-          if (bdd_high(in) == bddfalse)
-            return strip_neg(bdd_low(in));
-          assert(bdd_low(in) == bddfalse);
-
-          return bdd_ithvar(bdd_var(in)) & strip_neg(bdd_high(in));
-        }
-
-        bdd normalize(bdd in)
-        {
-          bdd res = bddfalse;
-
-          while (in != bddfalse)
-          {
-            bdd one = bdd_satone(in);
-            in -= one;
-
-            res |= strip_neg(one);
-          }
-
-          return res;
-        }
-
 
         bdd compute_sig_for_build(const state* src)
         {
@@ -609,10 +553,6 @@ namespace spot
       private:
         // The automaton which is simulated.
         tgba* automata_;
-
-        // The bdd which represents the domination relation between the
-        // class. It is the po.
-        bdd rel_;
 
         // Relation is aimed to represent the same thing than
         // rel_. The difference is in the way it does.
