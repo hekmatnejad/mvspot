@@ -1,5 +1,10 @@
 2012-04-05  Thomas Badie  <badie@lrde.epita.fr>
 
+	* src/tgbaalgos/simulation.cc: Comment useless print.
+	Remove the rel_ from the computation of the signature.
+
+2012-04-05  Thomas Badie  <badie@lrde.epita.fr>
+
 	* src/tgba/tgbaexplicit.cc: Fix a bug in current_acceptance_conditions.
 
 2012-04-05  Thomas Badie  <badie@lrde.epita.fr>
