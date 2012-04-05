@@ -236,9 +236,9 @@ namespace spot
             return bddtrue;
           assert(in != bddfalse);
           if (bdd_high(in) == bddfalse)
-            return strip_neg(bdd_low(in));
+            return strip_neg_acc(bdd_low(in));
           assert(bdd_low(in) == bddfalse);
-          return bdd_ithvar(bdd_var(in)) & strip_neg(bdd_high(in));
+          return bdd_ithvar(bdd_var(in)) & strip_neg_acc(bdd_high(in));
         }
 
 
@@ -253,20 +253,20 @@ namespace spot
           for (sit->first(); !sit->done(); sit->next())
           {
             const state* dst = sit->current_state();
-            bdd before_acc
-              = strip_neg_acc(bdd_support(sit->current_acceptance_conditions()));
 
+            bdd before_acc = sit->current_acceptance_conditions();
             // We want to have the information that the acceptance
             // condition is bdd false. But if you keep bddfalse, our
             // signature is meaningless.
             bdd acc = before_acc == bddfalse ? bddtrue : before_acc;
-#if 0
-            std::cout << "previous_it_class_ dst: " << previous_it_class_[dst]
-                      << std::endl;
+            acc = strip_neg_acc(acc);
+#if 1
+            // std::cout << "previous_it_class_ dst: " << previous_it_class_[dst]
+            //           << std::endl;
 
-            std::cout << "acc: " << acc << std::endl;
-            std::cout << "current_cond: " << sit->current_condition()
-                      << std::endl;
+            std::cout << "acc!: " << acc << std::endl;
+            // std::cout << "current_cond: " << sit->current_condition()
+            //           << std::endl;
 #endif
             // bdd all = automata_->all_acceptance_conditions();
             // bdd sup = bdd_support(all);
@@ -457,18 +457,19 @@ namespace spot
           for (sit->first(); !sit->done(); sit->next())
           {
             const state* dst = sit->current_state();
-            bdd before_acc
-              = bdd_support(sit->current_acceptance_conditions());
+            bdd before_acc = sit->current_acceptance_conditions();
 
             // We want to have the information that the acceptance
             // condition is bdd false. But if you keep bddfalse, our
             // signature is meaningless.
             bdd acc = before_acc == bddfalse ? bddtrue : before_acc;
-
+            acc = strip_neg_acc(acc);
             // The rel_ is here to allow the bdd to know which class
             // dominates another class.
             bdd to_add = acc & sit->current_condition()
               & relation_[previous_it_class_[dst]];
+
+            std::cout << "to_add: " << to_add << std::endl;
 
             res |= to_add;
             dst->destroy();
@@ -559,6 +560,9 @@ namespace spot
                 bdd acc = bdd_existcomp(cond_acc_dest, sup_all_acc);
                 bdd cond = bdd_existcomp(cond_acc_dest, sup_all_atomic_prop);
 
+                std::cout << "cond_acc_dest: " << cond_acc_dest << std::endl;
+                std::cout << "acc (before reverse): " << acc << std::endl;
+
                 acc = reverser.reverse_complement(acc);
 
                 int src = bdd2state[previous_it_class_[*it->second.begin()]];
@@ -570,7 +574,7 @@ namespace spot
                 assert(dst != 0);
 
                 std::cout << "src -> dst: " << src << " -> " << dst << std::endl;
-                std::cout << "acc: " << acc << "; cond" << std::endl;
+                std::cout << "acc: " << acc << "; cond" << cond << std::endl;
 
                 tgba_explicit_number::transition* t
                   = res->create_transition(src , dst);
