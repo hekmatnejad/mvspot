@@ -1,5 +1,9 @@
 2012-04-06  Thomas Badie  <badie@lrde.epita.fr>
 
+	* src/tgbaalgos/simulation.cc: Clean and comment.
+
+2012-04-06  Thomas Badie  <badie@lrde.epita.fr>
+
 	* src/tgbaalgos/simulation.cc: Rename the class before building
 	the result.
 

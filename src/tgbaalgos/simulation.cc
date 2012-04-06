@@ -22,42 +22,39 @@
 #include <map>
 #include <utility>
 #include "tgba/tgbaexplicit.hh"
-#include "ltlast/formula.hh"
-#include "ltlast/allnodes.hh"
 #include "simulation.hh"
 #include "misc/acccompl.hh"
 #include "misc/minato.hh"
-//#include "tgba/bddprint.hh"
+#include "tgba/bddprint.hh"
 
-// The way we will develop this algorithm is the following:
-// We'll take an automaton, and reverse all these acceptance conditions.
-// Then, to check if a transition i-dominates another, we'll use the bdd:
-// sig(transA) = cond(trans) & acc(trans) & class(trans->state).
-// Idem for sig(transB). Then, the transA dominates the transB if
-// sig(transA) & sig(transB) == sig(transA).
-// This work likely without the class, but with the class we need to
-// include the relation. To achieve this goal, we'll use a bdd `rel',
-// defined like this:
-// `rel' is the conjunction of all the class implication. For example, if
-// C(q1) => C(q2), and C(q2) => C(q3) in `rel', we'll see:
-// rel = C(q1) => C(q2) & C(q2) => C(q3)
-// We let the library do the simplification work if needed. This is
-// useful in the domination computation:
-// sig(transA) & sig(transB) & rel == sig(transA) & rel
-// So the algorithm is cut into several step:
+// The way we developed this algorithm is the following: We'll take
+// an automaton, and reverse all these acceptance conditions.  Then,
+// to check if a transition i-dominates another, we'll use the bdd:
+// sig(transA) = cond(trans) & acc(trans) & implied(class(trans->state)).
+// Idem for sig(transB). The 'implied' (represented by a hash table
+// 'relation_' in the implementation) is a conjunction of all the class
+// dominated by the class of the destination. This is how the relation is
+// included in the signature. It makes the simplifications alone, and the
+// work is done.
+// the algorithm is cut into several step:
 //
-// 1. Running through the ba and switch the acceptance condition to their
-//    negation, and initializing rel to bddtrue. This function is the
+// 1. Run through the tgba and switch the acceptance condition to their
+//    negation, and initializing relation_ by the 'init_ -> init_' where
+//    init_ is the bdd which represents the class. This function is the
 //    constructor of Simulation.
-// 2. Entering in the loop.
-//    - running through the automaton and computing the signature of each
+// 2. Enter in the loop (run).
+//    - Rename the class.
+//    - run through the automaton and computing the signature of each
 //      state. This function is `update_sig'.
-//    - Entering in a double loop to adapt the partial order, and set
-//      rel accordingly. This function is `update_po'.
-// 3. Building an automaton with the result, with the condition:
+//    - Enter in a double loop to adapt the partial order, and set
+//      'relation_' accordingly. This function is `update_po'.
+// 3. Rename the class.
+// 4. Building an automaton with the result, with the condition:
 // "a transition in the original automaton appears in the simulated one
 // iff this transition is included in the set of i-maximal neighbour."
 // This function is `build_output'.
+// The automaton simulated is recomplemented to come back to its initial
+// state when the object Simulation is destroyed.
 //
 // Obviously these functions are possibly cut into several little one.
 // This is just the general development idea.
@@ -133,20 +130,20 @@ namespace spot
         typedef std::map<bdd, bdd, bdd_less_than> map_bdd_bdd;
       public:
         Simulation(const tgba* t)
-          : automata_(const_cast<tgba*> (t)),
-            bdd_false_(bdd_ithvar(automata_->get_dict()
+          : a_(const_cast<tgba*> (t)),
+            bdd_false_(bdd_ithvar(a_->get_dict()
                                   ->register_anonymous_variables
                                     (1,
-                                     automata_))),
+                                     a_))),
             po_size_(0),
             all_class_var_(bddtrue)
         {
           ComplAutomatonRecordState
-            acc_compl(automata_,
-                      bdd_ithvar(automata_
+            acc_compl(a_,
+                      bdd_ithvar(a_
                                  ->get_dict()
                                  ->register_anonymous_variables
-                                 (1, automata_)));
+                                 (1, a_)));
 
           used_var_.push_back(acc_compl.init_);
           all_class_var_ = acc_compl.init_;
@@ -156,22 +153,22 @@ namespace spot
           // conditions by their complement.
           acc_compl.run();
 
-          size_automata_ = acc_compl.size;
+          size_a_ = acc_compl.size;
 
           previous_it_class_ = acc_compl.previous_it_class_;
 
           // Now, we have to get the bdd which will represent the
           // class. We register one bdd by state, because in the worst
           // case, |Class| == |State|.  In the call to
-          // register_anonymous_variables, there is a "size_automata_ -
+          // register_anonymous_variables, there is a "size_a_ -
           // 1" because we have already register one.
           unsigned set_num =
-            automata_
+            a_
               ->get_dict()
-              ->register_anonymous_variables(size_automata_ - 1,
-                                             automata_);
+              ->register_anonymous_variables(size_a_ - 1,
+                                             a_);
 
-          for (unsigned i = set_num; i < set_num + size_automata_ - 1; ++i)
+          for (unsigned i = set_num; i < set_num + size_a_ - 1; ++i)
           {
             free_var_.push(i);
             all_class_var_ &= bdd_ithvar(i);
@@ -182,12 +179,12 @@ namespace spot
 
         ~Simulation()
         {
-          AccComplAutomaton acc_compl(automata_);
+          AccComplAutomaton acc_compl(a_);
           acc_compl.revert();
         }
 
 
-
+        // We update the name of the class.
         void update_previous_it_class()
         {
           std::list<bdd>::iterator it_bdd = used_var_.begin();
@@ -209,7 +206,7 @@ namespace spot
           }
         }
 
-
+        // The core loop of the algorithm.
         tgba* run()
         {
           unsigned int nb_partition_before = 0;
@@ -224,52 +221,30 @@ namespace spot
             po_size_ = 0;
             update_sig();
             go_to_next_it();
-//            std::cerr << "nb_partition: " << bdd_lstate_.size()
-            // << std::endl;
           }
 
           update_previous_it_class();
           return build_result();
         }
 
-        // Take a state and compute its Ni.
+        // Take a state and compute its signature.
         bdd compute_sig(const state* src)
         {
-          // std::cerr << "\nState: " << automata_->format_state(src)
-          //           << std::endl;
-          tgba_succ_iterator* sit = automata_->succ_iter(src);
+          tgba_succ_iterator* sit = a_->succ_iter(src);
           bdd res = bddfalse;
-          // std::cerr << "previous_it_class_ src: "
-          // << previous_it_class_[src]
-          //           << std::endl;
+
           for (sit->first(); !sit->done(); sit->next())
           {
             const state* dst = sit->current_state();
-
             bdd acc = sit->current_acceptance_conditions();
-            // We want to have the information that the acceptance
-            // condition is bdd false. But if you keep bddfalse, our
-            // signature is meaningless.
-//            bdd acc = before_acc == bddfalse ? bddtrue : before_acc;
-//            acc = strip_neg_acc(acc);
-#if 0
-            // std::cout << "previous_it_class_ dst: "
-            // << previous_it_class_[dst]
-            //           << std::endl;
 
-            std::cout << "acc!: " << acc << std::endl;
-            // std::cout << "current_cond: " << sit->current_condition()
-            //           << std::endl;
-#endif
-            // bdd all = automata_->all_acceptance_conditions();
-            // bdd sup = bdd_support(all);
-
-            // acc = bdd_exist(sup, acc);
-
+            // to_add is a conjunction of the acceptance condition,
+            // the label of the transition and the class of the
+            // destination and all the class it implies.
             bdd to_add = acc & sit->current_condition()
               & relation_[previous_it_class_[dst]];
-            res |= to_add;
 
+            res |= to_add;
             dst->destroy();
           }
 
@@ -283,7 +258,7 @@ namespace spot
           // that the "previous_it_class_ = current_class_" must be
           // done before.
           assert(current_class_.empty());
-//          std::cout << "Next iteration\n" << std::endl;
+
           // Here we suppose that previous_it_class_ always contains
           // all the reachable states of this automaton. We do not
           // have to make (again) a traversal. We just have to run
@@ -363,9 +338,6 @@ namespace spot
               // We detect that "a&b -> a" by testing "a&b = a".
               if ((it1->first & it2->first) == (it1->first))
               {
-                // std::cerr << "\n" << std::endl;
-                // std::cerr << "" << it1->second
-                //           << " => " << it2->second << std::endl;
                 accu &= it2->second;
                 ++po_size_;
               }
@@ -374,41 +346,9 @@ namespace spot
           }
         }
 
-        bdd compute_sig_for_build(const state* src)
-        {
-          tgba_succ_iterator* sit = automata_->succ_iter(src);
-          bdd res = bddfalse;
-
-          for (sit->first(); !sit->done(); sit->next())
-          {
-            const state* dst = sit->current_state();
-            bdd acc = sit->current_acceptance_conditions();
-
-            // We want to have the information that the acceptance
-            // condition is bdd false. But if you keep bddfalse, our
-            // signature is meaningless.
-            //bdd acc = before_acc == bddfalse ? bddtrue : before_acc;
-            // acc = strip_neg_acc(acc);
-            // The rel_ is here to allow the bdd to know which class
-            // dominates another class.
-            bdd to_add = acc & sit->current_condition()
-              & relation_[previous_it_class_[dst]];
-
-//            std::cout << "to_add: " << to_add << std::endl;
-
-            res |= to_add;
-            dst->destroy();
-          }
-
-          delete sit;
-          return res;
-        }
-
         // Build the minimal resulting automaton
         tgba* build_result()
         {
-//          std::cout << "BUILD RESULT" << std::endl;
-
           // Now we need to create a state per partition. But the
           // problem is that we don't know exactly the class. We know
           // that it is a combination of the acceptance condition
@@ -420,51 +360,58 @@ namespace spot
           unsigned int current_max = 0;
 
           bdd all_acceptance_conditions
-            = automata_->all_acceptance_conditions();
+            = a_->all_acceptance_conditions();
 
-          // We have all the automata_ acceptance conditions
+          // We have all the a_ acceptance conditions
           // complemented.  So we need to complement it when adding a
           // transition.  We *must* keep the complemented because it
           // is easy to know if an acceptance condition is maximal or
           // not.
           AccCompl reverser(all_acceptance_conditions,
-                            automata_->neg_acceptance_conditions());
+                            a_->neg_acceptance_conditions());
 
           typedef tgba_explicit_number::transition trs;
           tgba_explicit_number* res
-            = new tgba_explicit_number(automata_->get_dict());
+            = new tgba_explicit_number(a_->get_dict());
           res->set_acceptance_conditions
             (all_acceptance_conditions);
 
+          bdd sup_all_acc = bdd_support(all_acceptance_conditions);
+          // Non atomic propositions variables (= acc and class)
+          bdd nonapvars = sup_all_acc & bdd_support(all_class_var_);
+
+          // Create one state per partition.
           for (map_bdd_lstate::iterator it = bdd_lstate_.begin();
                it != bdd_lstate_.end(); ++it)
           {
             res->add_state(++current_max);
             bdd part = previous_it_class_[*it->second.begin()];
+
+            // The difference between the two next lines is:
+            // the first says "if you see A", the second "if you
+            // see A and all the class implied by it".
             bdd2state[part] = current_max;
             bdd2state[relation_[part]] = current_max;
           }
 
-          // For each partition, we will create a state, and create
-          // all these transitions.
+          // For each partition, we will create
+          // all the transitions between the states.
           for (map_bdd_lstate::iterator it = bdd_lstate_.begin();
                it != bdd_lstate_.end();
                ++it)
           {
-            bdd sig = compute_sig_for_build(*(it->second.begin()));
+            // Get the signature.
+            bdd sig = compute_sig(*(it->second.begin()));
+
+            // Get all the variable in the signature.
             bdd sup_sig = bdd_support(sig);
-            bdd sup_all_acc = bdd_support(all_acceptance_conditions);
-            // Non atomic propositions variables (= acc and class)
-            bdd nonapvars = sup_all_acc & bdd_support(all_class_var_);
-            bdd sup_all_atomic_prop = bdd_exist(bdd_support(sig), nonapvars);
+
+            // Get the variable in the signature which represents conditions.
+            bdd sup_all_atomic_prop = bdd_exist(sup_sig, nonapvars);
+
+            // Get the part of the signature composed only with the atomic
+            // proposition.
             bdd all_atomic_prop = bdd_exist(sig, nonapvars);
-
-            // std::cout << "\n\nNew state: "
-            //           << automata_->format_state(*it->second.begin())
-            //           << std::endl;
-
-            // std::cout << "sig: " << sig
-            //           << std::endl << std::endl;
 
             while (all_atomic_prop != bddfalse)
             {
@@ -473,37 +420,39 @@ namespace spot
                                       bddtrue);
               all_atomic_prop -= one;
 
-              // std::cout << "sig & one: " << (sig & one)
-              //           << std::endl;
               minato_isop isop(sig & one);
 
               bdd cond_acc_dest;
               while ((cond_acc_dest = isop.next()) != bddfalse)
               {
+                // Take the transition, and keep only the variable which
+                // are used to represent the class.
                 bdd dest = bdd_existcomp(cond_acc_dest,
                                          all_class_var_);
+
+                // Keep only ones who are acceptance condition.
                 bdd acc = bdd_existcomp(cond_acc_dest, sup_all_acc);
+
+                // Keep the other !
                 bdd cond = bdd_existcomp(cond_acc_dest, sup_all_atomic_prop);
 
-                // std::cout << "cond_acc_dest: " << cond_acc_dest
-                //  << std::endl;
-                // std::cout << "acc (before reverse): " << acc << std::endl;
-
+                // Because we have complemented all the acceptance condition
+                // on the input automaton, we must re invert them to create
+                // a new transition.
                 acc = reverser.reverse_complement(acc);
 
+                // Take the id of the source and destination.
+                // To know the source, we must take a random state in the
+                // list which is in the class we currently work on.
                 int src = bdd2state[previous_it_class_[*it->second.begin()]];
                 int dst = bdd2state[dest];
 
                 // src or dst == 0 means "dest" or "prev..." isn't in the map.
                 // so it is a bug.
-                assert(src != 0);
-                assert(dst != 0);
+                assert(src != 0 && dst != 0);
 
-                // std::cout << "src -> dst: "
-                //           << src << " -> " << dst << std::endl;
-                // std::cout << "acc: " << acc << "; cond" << cond
-                // << std::endl;
-
+                // Create the transition, add the condition and the
+                // acceptance condition.
                 tgba_explicit_number::transition* t
                   = res->create_transition(src , dst);
                 res->add_conditions(t, cond);
@@ -513,7 +462,7 @@ namespace spot
           }
 
           res->set_init_state(bdd2state[previous_it_class_
-                                         [automata_->get_init_state()]]);
+                                         [a_->get_init_state()]]);
           res->merge_transitions();
           return res;
         }
@@ -526,32 +475,34 @@ namespace spot
                it != bdd_lstate_.end();
                ++it)
           {
-            std::cout << "partition: " << it->first << std::endl;
+            std::cerr << "partition: "
+                      << bdd_format_set(a_->get_dict(), it->first) << std::endl;
 
             for (std::list<const state*>::iterator it_s = it->second.begin();
                  it_s != it->second.end();
                  ++it_s)
             {
-              std::cout << "  - "
-                        << automata_->format_state(*it_s) << std::endl;
+              std::cerr << "  - "
+                        << a_->format_state(*it_s) << std::endl;
             }
           }
 
-          std::cout << "\nPrevious iteration" << std::endl;
+          std::cerr << "\nPrevious iteration\n" << std::endl;
 
           for (map_state_bdd::const_iterator it = previous_it_class_.begin();
                it != previous_it_class_.end();
                ++it)
           {
-            std::cout << automata_->format_state(it->first)
-                      << " was in " << it->second << std::endl;
+            std::cerr << a_->format_state(it->first)
+                      << " was in "
+                      << bdd_format_set(a_->get_dict(), it->second)
+                      << std::endl;
           }
         }
 
-
       private:
         // The automaton which is simulated.
-        tgba* automata_;
+        tgba* a_;
 
         // Relation is aimed to represent the same thing than
         // rel_. The difference is in the way it does.
@@ -584,7 +535,8 @@ namespace spot
         // The list of used bdd. They are in used as identifier for class.
         std::list<bdd> used_var_;
 
-        unsigned int size_automata_;
+        // Size of the automaton.
+        unsigned int size_a_;
 
         // Used to know when there is no evolution in the po. Updated
         // in the `update_po' method.
@@ -595,8 +547,6 @@ namespace spot
     };
   } // End namespace anonymous.
 
-
-
   tgba*
   simulation(const tgba* t)
   {
@@ -604,7 +554,4 @@ namespace spot
 
     return foo.run();
   }
-
-
-
 } // End namespace spot.
