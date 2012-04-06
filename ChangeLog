@@ -1,3 +1,8 @@
+2012-04-06  Thomas Badie  <badie@lrde.epita.fr>
+
+	* src/tgbatest/spotlbtt.test: Add the simulation.
+	* src/tgbatest/ltl2tgba.cc: Add direct simulation.
+
 2012-04-05  Thomas Badie  <badie@lrde.epita.fr>
 
 	* src/misc/acccompl.cc: If we receive all acc, we return true
