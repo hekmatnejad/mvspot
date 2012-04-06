@@ -224,21 +224,22 @@ namespace spot
             po_size_ = 0;
             update_sig();
             go_to_next_it();
-//            std::cout << "nb_partition: " << bdd_lstate_.size()
+//            std::cerr << "nb_partition: " << bdd_lstate_.size()
             // << std::endl;
           }
 
+          update_previous_it_class();
           return build_result();
         }
 
         // Take a state and compute its Ni.
         bdd compute_sig(const state* src)
         {
-//          std::cout << "\nState: " << automata_->format_state(src)
-          //<< std::endl;
+          // std::cerr << "\nState: " << automata_->format_state(src)
+          //           << std::endl;
           tgba_succ_iterator* sit = automata_->succ_iter(src);
           bdd res = bddfalse;
-          // std::cout << "previous_it_class_ src: "
+          // std::cerr << "previous_it_class_ src: "
           // << previous_it_class_[src]
           //           << std::endl;
           for (sit->first(); !sit->done(); sit->next())
@@ -339,7 +340,6 @@ namespace spot
         // opposite.
         void update_po(const map_bdd_bdd& now_to_next)
         {
-          bdd new_rel = bddtrue;
           // This loop follows the pattern given by the paper.
           // foreach class do
           // |  foreach class do
@@ -363,10 +363,9 @@ namespace spot
               // We detect that "a&b -> a" by testing "a&b = a".
               if ((it1->first & it2->first) == (it1->first))
               {
-                // std::cout << "\n" << std::endl;
-                // std::cout << "" << it1->second
+                // std::cerr << "\n" << std::endl;
+                // std::cerr << "" << it1->second
                 //           << " => " << it2->second << std::endl;
-                new_rel &= (it1->second >> it2->second);
                 accu &= it2->second;
                 ++po_size_;
               }
