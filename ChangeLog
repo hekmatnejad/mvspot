@@ -1,3 +1,8 @@
+2012-04-08  Thomas Badie  <badie@lrde.epita.fr>
+
+	* src/tgbaalgos/simulation.cc: Change the class id
+	when the signature is bddfalse (no transition).
+
 2012-04-06  Thomas Badie  <badie@lrde.epita.fr>
 
 	* src/tgbaalgos/simulation.cc: Clean and comment.

@@ -200,7 +200,10 @@ namespace spot
                  it_s != it->second.end();
                  ++it_s)
             {
-              previous_it_class_[*it_s] = *it_bdd;
+              if (it->first == bddfalse)
+                previous_it_class_[*it_s] = bddfalse;
+              else
+                previous_it_class_[*it_s] = *it_bdd;
             }
             ++it_bdd;
           }
@@ -302,7 +305,10 @@ namespace spot
                it != bdd_lstate_.end();
                ++it)
           {
-            now_to_next[it->first] = *it_bdd;
+            if (it->first == bddfalse)
+              now_to_next[it->first] = bddfalse;
+            else
+              now_to_next[it->first] = *it_bdd;
             ++it_bdd;
           }
 
