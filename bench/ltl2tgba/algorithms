@@ -95,4 +95,37 @@ Algorithm
    Enabled = yes
 }
 
+Algorithm
+{
+   Name = "Spot FM (TGBA) -RSD"
+   Path = "$LBTT_TRANSLATE"
+   Parameters = "--spot '$LTL2TGBA -f -t -R3 -r4 -RSD -F'"
+   Enabled = yes
+}
+
+Algorithm
+{
+   Name = "Spot FM (TGBA) -RS"
+   Path = "$LBTT_TRANSLATE"
+   Parameters = "--spot '$LTL2TGBA -f -t -R3 -r4 -RS -F'"
+   Enabled = yes
+}
+
+Algorithm
+{
+   Name = "Spot FM (TGBA) -RSD -x"
+   Path = "$LBTT_TRANSLATE"
+   Parameters = "--spot '$LTL2TGBA -f -t -x -r7 -RSD -F'"
+   Enabled = yes
+}
+
+Algorithm
+{
+   Name = "Spot FM (TGBA) -RS -x"
+   Path = "$LBTT_TRANSLATE"
+   Parameters = "--spot '$LTL2TGBA -f -t -x -r7 -RS -F'"
+   Enabled = yes
+}
+
+
 EOF

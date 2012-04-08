@@ -1,5 +1,9 @@
 2012-04-08  Thomas Badie  <badie@lrde.epita.fr>
 
+	* bench/ltl2tgba/algorithms: Add new algorithms.
+
+2012-04-08  Thomas Badie  <badie@lrde.epita.fr>
+
 	* src/tgbaalgos/simulation.cc: Change the class id
 	when the signature is bddfalse (no transition).
 
