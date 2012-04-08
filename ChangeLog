@@ -1,5 +1,9 @@
 2012-04-08  Thomas Badie  <badie@lrde.epita.fr>
 
+	* bench/ltl2tgba/known (ltlfile): Add a missing $srcdir.
+
+2012-04-08  Thomas Badie  <badie@lrde.epita.fr>
+
 	* bench/ltl2tgba/algorithms: Add new algorithms.
 
 2012-04-08  Thomas Badie  <badie@lrde.epita.fr>
