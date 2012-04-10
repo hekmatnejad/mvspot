@@ -1068,9 +1068,10 @@ main(int argc, char** argv)
 
       if (reduction_dir_sim)
         {
-          tm.start("Reduction w/ direct simulation");
+          tm.start("simulation");
           temp_dir_sim = spot::simulation(a);
           a = temp_dir_sim;
+          tm.stop("simulation");
         }
 
 
