@@ -199,6 +199,8 @@ syntax(char* prog)
 	    << std::endl
 	    << "  -RDS  minimize the automaton with direct simulation"
 	    << std::endl
+	    << "  -RRS  minimize the automaton with reverse simulation"
+	    << std::endl
             << "  -Rm   attempt to WDBA-minimize the automata" << std::endl
 	    << std::endl
 
@@ -331,8 +333,9 @@ main(int argc, char** argv)
   bool use_timer = false;
   bool assume_sba = false;
   bool reduction_dir_sim = false;
+  bool reduction_rev_sim = false;
   spot::tgba* temp_dir_sim = 0;
-
+  spot::tgba* temp_rev_sim = 0;
 
   for (;;)
     {
@@ -605,6 +608,10 @@ main(int argc, char** argv)
 	  // equal to -RDS.
 	  reduction_dir_sim = true;
 	}
+      else if (!strcmp(argv[formula_index], "-RRS"))
+        {
+          reduction_rev_sim = true;
+        }
       else if (!strcmp(argv[formula_index], "-R3"))
 	{
 	  scc_filter = true;
@@ -980,10 +987,20 @@ main(int argc, char** argv)
 	      a = minimized;
               // When the minimization succeed, simulation is useless.
               reduction_dir_sim = false;
+              reduction_rev_sim = false;
 	      assume_sba = true;
 	    }
 	}
 
+
+      if (reduction_rev_sim)
+        {
+          tm.start("Reduction w/ reverse simulation");
+          temp_rev_sim = spot::cosimulation(a);
+          a = temp_rev_sim;
+          tm.stop("Reduction w/ reverse simulation");
+	  assume_sba = false;
+        }
 
       if (reduction_dir_sim)
         {
@@ -1361,6 +1378,7 @@ main(int argc, char** argv)
       delete to_free;
       delete echeck_inst;
       delete temp_dir_sim;
+      delete temp_rev_sim;
     }
   else
     {
