@@ -201,6 +201,9 @@ syntax(char* prog)
 	    << std::endl
 	    << "  -RRS  minimize the automaton with reverse simulation"
 	    << std::endl
+	    << "  -RPS  minimize the automaton with an alternance"
+            << " reverse simulation and simulation"
+	    << std::endl
             << "  -Rm   attempt to WDBA-minimize the automata" << std::endl
 	    << std::endl
 
@@ -334,8 +337,11 @@ main(int argc, char** argv)
   bool assume_sba = false;
   bool reduction_dir_sim = false;
   bool reduction_rev_sim = false;
+  bool reduction_iterated_sim = false;
   spot::tgba* temp_dir_sim = 0;
   spot::tgba* temp_rev_sim = 0;
+  spot::tgba* temp_iterated_sim = 0;
+
 
   for (;;)
     {
@@ -636,6 +642,10 @@ main(int argc, char** argv)
       else if (!strcmp(argv[formula_index], "-RDS"))
         {
           reduction_dir_sim = true;
+        }
+      else if (!strcmp(argv[formula_index], "-RIS"))
+        {
+          reduction_iterated_sim = true;
         }
       else if (!strcmp(argv[formula_index], "-rL"))
         {
@@ -1011,6 +1021,15 @@ main(int argc, char** argv)
 	  assume_sba = false;
         }
 
+      if (reduction_iterated_sim)
+        {
+          tm.start("Reduction w/ iterated simulations");
+          temp_iterated_sim = spot::iterated_simulations(a);
+          a = temp_iterated_sim;
+          tm.stop("Reduction w/ iterated simulations");
+	  assume_sba = false;
+        }
+
 
       unsigned int n_acc = a->number_of_acceptance_conditions();
       if (echeck_inst
@@ -1379,6 +1398,7 @@ main(int argc, char** argv)
       delete echeck_inst;
       delete temp_dir_sim;
       delete temp_rev_sim;
+      delete temp_iterated_sim;
     }
   else
     {

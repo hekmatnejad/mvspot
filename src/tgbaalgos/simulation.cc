@@ -28,6 +28,7 @@
 #include "misc/minato.hh"
 #include "tgba/bddprint.hh"
 #include "tgbaalgos/reachiter.hh"
+#include "tgbaalgos/sccfilter.hh"
 
 // The way we developed this algorithm is the following: We take an
 // automaton, and reverse all these acceptance conditions.  We reverse
@@ -104,6 +105,22 @@ namespace spot
     typedef std::map<bdd, std::list<const state*>,
                      bdd_less_than> map_bdd_lstate;
 
+    struct automaton_size
+    {
+      automaton_size()
+        : transitions(0),
+          states(0)
+      {
+      }
+
+      inline bool operator== (const automaton_size& r)
+      {
+        return transitions == r.transitions && states == r.states;
+      }
+
+      int transitions;
+      int states;
+    };
 
     // This class takes an automaton and creates a copy with all
     // acceptance conditions complemented.
@@ -443,6 +460,14 @@ namespace spot
           }
       }
 
+      automaton_size get_stat() const
+      {
+        assert(stat.states != 0);
+
+        return stat;
+      }
+
+
       // Build the minimal resulting automaton.
       tgba* build_result()
       {
@@ -489,6 +514,9 @@ namespace spot
             bdd2state[relation_[part]] = current_max;
           }
 
+        stat.states = bdd_lstate_.size();
+        stat.transitions = 0;
+
 	// For each partition, we will create
 	// all the transitions between the states.
 	for (map_bdd_lstate::iterator it = bdd_lstate_.begin();
@@ -533,6 +561,8 @@ namespace spot
 		bdd cond_acc_dest;
 		while ((cond_acc_dest = isop.next()) != bddfalse)
 		  {
+                    ++stat.transitions;
+
 		    // Take the transition, and keep only the variable which
 		    // are used to represent the class.
 		    bdd dest = bdd_existcomp(cond_acc_dest,
@@ -665,6 +695,8 @@ namespace spot
       // Initial state of the automaton we are working on
       state* initial_state;
 
+      automaton_size stat;
+
     };
 
   } // End namespace anonymous.
@@ -684,5 +716,39 @@ namespace spot
 
     return simul.run();
   }
+
+  tgba*
+  iterated_simulations(const tgba* t)
+  {
+    tgba* res = const_cast<tgba*> (t);
+    automaton_size prev;
+    automaton_size next;
+    next.states = -1;
+
+    while (!(prev == next))
+      {
+        prev = next;
+        direct_simulation<false> simul(res);
+
+        tgba* after_cosimulation = simul.run();
+
+        if (res != t)
+          delete res;
+
+        direct_simulation<true> cosimul(after_cosimulation);
+
+        tgba* after_simulation = cosimul.run();
+
+        next = cosimul.get_stat();
+
+        res = scc_filter(after_simulation, false);
+
+        delete after_cosimulation;
+        delete after_simulation;
+      }
+
+    return res;
+  }
+
 
 } // End namespace spot.
