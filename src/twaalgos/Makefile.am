@@ -68,6 +68,7 @@ twaalgos_HEADERS = \
   remprop.hh \
   replayrun.hh \
   safety.hh \
+  safra.hh \
   sbacc.hh \
   sccfilter.hh \
   scc.hh \
@@ -126,6 +127,7 @@ libtwaalgos_la_SOURCES = \
   replayrun.cc \
   relabel.cc \
   safety.cc \
+  safra.cc \
   sbacc.cc \
   scc.cc \
   sccinfo.cc \
