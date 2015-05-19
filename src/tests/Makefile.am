@@ -58,6 +58,7 @@ check_PROGRAMS = \
   reduccmp \
   reduceu \
   reductaustr \
+  safra \
   syntimpl \
   taatgba \
   tgbagraph \
@@ -104,6 +105,7 @@ reduceu_SOURCES = equalsf.cc
 reduceu_CPPFLAGS = $(AM_CPPFLAGS) -DREDUC -DEVENT_UNIV
 reductaustr_SOURCES = equalsf.cc
 reductaustr_CPPFLAGS = $(AM_CPPFLAGS) -DREDUC_TAUSTR
+safra_SOURCES = safra.cc
 syntimpl_SOURCES = syntimpl.cc
 tostring_SOURCES = tostring.cc
 tunabbrev_SOURCES = equalsf.cc
@@ -142,6 +144,7 @@ TESTS_ltl = \
   lenient.test \
   rand.test \
   isop.test \
+  safra.test \
   syntimpl.test \
   reduc.test \
   reduc0.test \
