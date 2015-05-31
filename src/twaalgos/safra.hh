@@ -51,7 +51,8 @@ namespace spot
                           const std::vector<unsigned>& bddnums,
                           std::unordered_map<bdd,
                                              std::pair<unsigned, unsigned>,
-                                             bdd_hash>& deltas) const;
+                                             bdd_hash>& deltas,
+                          unsigned acc_num) const;
     // Used when creating the list of successors
     // A new intermediate node is created with  src's braces and with dst as id
     // A merge is done if dst already existed in *this

@@ -29,7 +29,7 @@ namespace spot
 {
   namespace
   {
-    using power_set = std::map<safra_state, int>;
+    using power_set = std::map<std::vector<safra_state>, int>;
     const char* const sub[10] =
     {
       "\u2080",
@@ -53,6 +53,66 @@ namespace spot
           start /= 10;
         }
       while (start);
+      return res;
+    }
+
+    struct acc_pool
+    {
+      acc_pool(unsigned num_set)
+      : max(num_set)
+      { }
+
+      unsigned count()
+      {
+        return next_;
+      }
+
+      acc_cond::mark_t get_acc(unsigned set, unsigned acc_num)
+      {
+        if (acc_num >= max[set])
+          {
+            for (unsigned i = max[set]; i <= acc_num; ++i)
+              {
+                map_[std::make_pair(set, i)] = next_++;
+              }
+            max[set] = acc_num + 1;
+          }
+        acc_cond::mark_t res = 1 << map_[std::make_pair(set, acc_num)];
+        return res;
+      }
+
+      unsigned next_ = 0;
+      std::vector<unsigned> max;
+      // maps a (set, acc_num) to a unique id.
+      std::map<std::pair<unsigned, unsigned>, unsigned> map_;
+    };
+
+    acc_cond::acc_code gen_parity(acc_pool& pool, unsigned num_sets)
+    {
+      acc_cond::acc_code res = acc_cond::acc_code::t();
+      for (unsigned i = 0; i < num_sets; ++i)
+        {
+          acc_cond::acc_code tmp = acc_cond::acc_code::f();
+          unsigned odd = -1U;
+          for (auto it = pool.map_.rbegin(); it != pool.map_.rend(); ++it)
+            {
+              auto& p = *it;
+              if (p.first.first == i)
+                {
+                  if (p.first.second % 2 == 0)
+                    {
+                      // Only emit red if a grenn comes after
+                      if (odd != -1U)
+                        tmp.append_and(res.fin({odd}));
+                      tmp.append_or(res.inf({p.second}));
+                      odd = -1U;
+                    }
+                  else
+                    odd = p.second;
+                }
+            }
+          res.append_and(tmp);
+        }
       return res;
     }
 
@@ -136,18 +196,47 @@ namespace spot
     }
 
     // Used to remove all acceptance whos value is above max_acc
-    void remove_dead_acc(twa_graph_ptr& aut, unsigned max_acc)
+    // Returns the minimum amount of acc_sets needed
+    unsigned remove_dead_acc(twa_graph_ptr& aut, acc_pool& pool)
     {
-      assert(max_acc < 32);
-      unsigned mask = (1 << max_acc) - 1;
-      for (auto& t: aut->transitions())
+      unsigned res = 0;
+      unsigned m = 0;
+      for (unsigned i = 0; i < pool.max.size(); ++i)
         {
-          t.acc &= mask;
+          unsigned max = 0;
+          unsigned to_rem = 0;
+          for (auto p : pool.map_)
+            {
+              if (p.first.first == i)
+                {
+                  if (max < p.first.second)
+                    {
+                      max = p.first.second;
+                      to_rem = p.second;
+                    }
+                }
+            }
+          // Remove Red with too high a value
+          if (max % 2 == 1)
+            {
+              std::cerr << "Removing: " << to_rem << std::endl;
+              unsigned mask = ~(1 << to_rem);
+              for (auto& t: aut->transitions())
+                {
+                  t.acc &= mask;
+                }
+            }
+          if (res < to_rem)
+            {
+              res = to_rem;
+              m = max;
+            }
         }
+      return m % 2 ? res : res + 1;
     }
 
     std::vector<std::string>*
-    print_debug(std::map<safra_state, int>& states)
+    print_debug(std::map<std::vector<safra_state>, int>& states)
     {
       std::vector<std::string>* res = nullptr;
       res = new std::vector<std::string>(states.size());
@@ -155,11 +244,16 @@ namespace spot
       for (auto& p: states)
         {
           std::ostringstream os;
-          for (auto& n: p.first.nodes_)
-            idx.push_back(n.first);
-          print(0, p.first.nodes_, os, idx);
-          (*res)[p.second] = os.str();
-          idx.clear();
+          // TODO multi printer
+          for (auto& state: p.first)
+          {
+            for (auto& n: state.nodes_)
+              idx.push_back(n.first);
+            print(0, state.nodes_, os, idx);
+            os << '\n';
+            (*res)[p.second] = os.str();
+            idx.clear();
+          }
         }
       return res;
     }
@@ -169,8 +263,9 @@ namespace spot
   safra_state::compute_succs(const const_twa_graph_ptr& aut,
                              const std::vector<unsigned>& bddnums,
                              std::unordered_map<bdd,
-                                             std::pair<unsigned, unsigned>,
-                                             bdd_hash>& deltas) const -> succs_t
+                                               std::pair<unsigned, unsigned>,
+                                               bdd_hash>& deltas,
+                             unsigned acc_num) const -> succs_t
   {
     succs_t res;
     // Given a bdd returns index of associated safra_state in res
@@ -194,7 +289,8 @@ namespace spot
                                      bddnums[j]);
                   }
                 safra_state& ss = res[idx].first;
-                ss.update_succ(node.second, t.dst, t.acc);
+                acc_cond::mark_t mask = 1 << acc_num;
+                ss.update_succ(node.second, t.dst, t.acc & mask);
                 assert(ss.nb_braces_.size() == ss.is_green_.size());
               }
           }
@@ -301,10 +397,8 @@ namespace spot
   {
     std::vector<node_helper::brace_t> copy = braces;
     // TODO handle multiple accepting sets
-    if (acc.count())
+    if (acc)
       {
-        assert(acc.has(0) && acc.count() == 1 &&
-               "Only one TBA are accepted at the moment");
         // Accepting transition generate new braces: step A1
         copy.emplace_back(nb_braces_.size());
         // nb_braces_ gets updated later so put 0 for now
@@ -371,9 +465,9 @@ namespace spot
   {
     // Degeneralize
     const_twa_graph_ptr aut;
-    if (a->acc().is_generalized_buchi())
-      aut = spot::degeneralize_tba(a);
-    else
+    //if (a->acc().is_generalized_buchi())
+    //  aut = spot::degeneralize_tba(a);
+    //else
       aut = a;
 
 
@@ -425,52 +519,65 @@ namespace spot
                    true // stutter inv
                    });
 
+    unsigned num_sets = std::max(1U, aut->acc().num_sets());
     // Given a safra_state get its associated state in output automata.
     // Required to create new transitions from 2 safra-state
     power_set seen;
     safra_state init(aut->get_init_state_number(), true);
     unsigned num = res->new_state();
     res->set_init_state(num);
-    seen.insert(std::make_pair(init, num));
-    std::deque<safra_state> todo;
-    todo.push_back(init);
+    seen.insert(std::make_pair(std::vector<safra_state>(num_sets, init), num));
+    std::deque<std::vector<safra_state>> todo;
+    todo.push_back(std::vector<safra_state>(num_sets, init));
     unsigned sets = 0;
+    using succs_t = safra_state::succs_t;
+    std::vector<succs_t> v_succs(num_sets);
+    acc_pool pool(num_sets);
     while (!todo.empty())
       {
-        using succs_t = safra_state::succs_t;
-        safra_state curr = todo.front();
+        auto curr = todo.front();
         unsigned src_num = seen.find(curr)->second;
         todo.pop_front();
-        succs_t succs = curr.compute_succs(aut, bddnums, deltas);
-        for (auto s: succs)
+        for (unsigned i = 0; i < num_sets; ++i)
+          v_succs[i] = curr[i].compute_succs(aut, bddnums, deltas, i);
+        for (unsigned i = 0; i < v_succs[0].size(); ++i)
           {
-            auto i = seen.find(s.first);
-	    unsigned dst_num;
-	    if (i != seen.end())
-	      {
-		dst_num = i->second;
-	      }
-	    else
-	      {
-                dst_num = res->new_state();
-                // s.first.print_debug(dst_num);
-                todo.push_back(s.first);
-                seen.insert(std::make_pair(s.first, dst_num));
-              }
-            if (s.first.color_ != -1U)
+            std::vector<safra_state> s;
+            unsigned bdd_id = v_succs[0][i].second;
+            for (unsigned j = 0; j < v_succs.size(); ++j)
               {
-                res->new_transition(src_num, dst_num, num2bdd[s.second],
-                                    {s.first.color_});
-                // We only care about green acc
-                if (s.first.color_ % 2 == 0)
-                  sets = std::max(s.first.color_ + 1, sets);
+                // TODO maybe better to pass by reference
+                s.push_back(v_succs[j][i].first);
+                assert(bdd_id == v_succs[j][i].second);
+              }
+            auto succ = seen.find(s);
+            unsigned dst_num;
+            if (succ != seen.end())
+              {
+                dst_num = succ->second;
               }
             else
-              res->new_transition(src_num, dst_num, num2bdd[s.second]);
+              {
+                dst_num = res->new_state();
+                // once again passing a copy ...
+                todo.push_back(s);
+                seen.insert(std::make_pair(s, dst_num));
+              }
+
+            acc_cond::mark_t acc = 0;
+            for (unsigned k = 0; k < s.size(); ++k)
+              {
+                if (s[k].color_ != -1U)
+                    acc |= pool.get_acc(k, s[k].color_);
+              }
+            res->new_transition(src_num, dst_num, num2bdd[bdd_id], acc);
+            // We only care about green acc
+            if (acc % 2 == 0)
+              sets = std::max(s[0].color_ + 1, sets);
           }
       }
-    remove_dead_acc(res, sets);
-    res->set_acceptance(sets, acc_cond::acc_code::parity(false, false, sets));
+    unsigned num_acc = remove_dead_acc(res, pool);
+    res->set_acceptance(num_acc, gen_parity(pool, num_sets));
     res->prop_deterministic(true);
     res->prop_state_based_acc(false);
     if (pretty_print)
