@@ -192,6 +192,7 @@ AC_CONFIG_FILES([
   bench/ltl2tgba/Makefile
   bench/ltl2tgba/defs
   bench/product_n/Makefile
+  bench/product_n/plot_result.ipynb
   bench/spin13/Makefile
   bench/wdba/Makefile
   bench/stutter/Makefile
@@ -226,7 +227,12 @@ AC_CONFIG_FILES([
 AC_CONFIG_FILES([doc/org/g++wrap], [chmod +x doc/org/g++wrap])
 AC_CONFIG_FILES([doc/dot], [chmod +x doc/dot])
 AC_CONFIG_FILES([tests/run], [chmod +x tests/run])
-AC_CONFIG_FILE([bench/product_n/run], [chmod +x bench/product_n/run])
+AC_CONFIG_FILES([bench/product_n/plot_result],
+                [chmod +x bench/product_n/plot_result])
+AC_CONFIG_FILES([bench/product_n/run_bench],
+                [chmod +x bench/product_n/run_bench])
+AC_CONFIG_FILES([bench/product_n/init_python],
+                [chmod +x bench/product_n/init_python])
 AC_OUTPUT
 
 case $VERSION:$enable_devel in

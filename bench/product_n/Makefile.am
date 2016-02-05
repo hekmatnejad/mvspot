@@ -16,4 +16,4 @@
 ## You should have received a copy of the GNU General Public License
 ## along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-EXTRA_DIST = run.in product_bench.py
+EXTRA_DIST = init_python.in run_bench.in plot_result.in product_bench.py
