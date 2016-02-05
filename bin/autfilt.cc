@@ -69,6 +69,7 @@ Exit status:\n\
 // Keep this list sorted
 enum {
   OPT_ACC_SETS = 256,
+  OPT_ACC_WORD,
   OPT_ARE_ISOMORPHIC,
   OPT_CLEAN_ACC,
   OPT_CNF_ACC,
@@ -213,6 +214,8 @@ static const argp_option options[] =
       "keep automata whose number of edges are in RANGE", 0 },
     { "acc-sets", OPT_ACC_SETS, "RANGE", 0,
       "keep automata whose number of acceptance sets are in RANGE", 0 },
+    { "accept-word", OPT_ACC_WORD, "WORD", 0,
+      "keep automata that recognize WORD", 0 },
     RANGE_DOC_FULL,
     { nullptr, 0, nullptr, 0,
       "If any option among --small, --deterministic, or --any is given, "
@@ -276,6 +279,7 @@ static bool opt_invert = false;
 static range opt_states = { 0, std::numeric_limits<int>::max() };
 static range opt_edges = { 0, std::numeric_limits<int>::max() };
 static range opt_accsets = { 0, std::numeric_limits<int>::max() };
+static std::vector<std::string> opt_acc_words;
 static int opt_max_count = -1;
 static bool opt_destut = false;
 static char opt_instut = 0;
@@ -330,6 +334,9 @@ parse_opt(int key, char* arg, struct argp_state*)
       break;
     case OPT_ACC_SETS:
       opt_accsets = parse_range(arg, 0, std::numeric_limits<int>::max());
+      break;
+    case OPT_ACC_WORD:
+      opt_acc_words.push_back(arg);
       break;
     case OPT_ARE_ISOMORPHIC:
       opt->are_isomorphic = read_automaton(arg, opt->dict);
@@ -609,6 +616,20 @@ namespace
 	matched &= aut->is_empty();
       if (opt->intersect)
 	matched &= !spot::product(aut, opt->intersect)->is_empty();
+      if (!opt_acc_words.empty())
+	{
+	  auto word_aut = spot::parse_word(opt_acc_words[0],
+				       opt->dict)->as_automaton();
+	  for (size_t i = 1; i < opt_acc_words.size(); ++i)
+	    {
+	      // Compose each additionnanl word with the first one
+	      word_aut = spot::product(word_aut,
+				       spot::parse_word(opt_acc_words[i],
+							opt->dict)
+				       ->as_automaton());
+	    }
+	  matched &= !spot::product(aut, word_aut)->is_empty();
+	}
 
       // Drop or keep matched automata depending on the --invert option
       if (matched == opt_invert)
@@ -765,6 +786,26 @@ main(int argc, char** argv)
       hoa_processor processor(post);
       if (processor.run())
 	return 2;
+    }
+  catch (const spot::parse_error& e)
+    {
+      auto is_several_lines =
+	[] (const char* err)
+	{
+	  for (;;)
+	    {
+	      if (*err == '\0')
+		return false;
+	      else if (*err == '\n')
+		return true;
+	      ++err;
+	    }
+	};
+      auto err = e.what();
+      if (is_several_lines(err))
+	error(2, 0, "\n%s", err);
+      else
+	error(2, 0, "%s", err);
     }
   catch (const std::runtime_error& e)
     {
