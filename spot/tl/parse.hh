@@ -97,10 +97,10 @@ namespace spot
   /// \warning This function is not reentrant.
   SPOT_API
   parsed_formula parse_infix_psl(const std::string& ltl_string,
-				 environment& env =
-				 default_environment::instance(),
-				 bool debug = false,
-				 bool lenient = false);
+                                 environment& env =
+                                 default_environment::instance(),
+                                 bool debug = false,
+                                 bool lenient = false);
 
   /// \brief Build a Boolean formula from a string.
   /// \param ltl_string The string to parse.
@@ -120,10 +120,10 @@ namespace spot
   /// \warning This function is not reentrant.
   SPOT_API
   parsed_formula parse_infix_boolean(const std::string& ltl_string,
-				     environment& env =
-				     default_environment::instance(),
-				     bool debug = false,
-				     bool lenient = false);
+                                     environment& env =
+                                     default_environment::instance(),
+                                     bool debug = false,
+                                     bool lenient = false);
 
   /// \brief Build a formula from an LTL string in LBT's format.
   /// \param ltl_string The string to parse.
@@ -145,9 +145,9 @@ namespace spot
   /// \warning This function is not reentrant.
   SPOT_API
   parsed_formula parse_prefix_ltl(const std::string& ltl_string,
-				  environment& env =
-				  default_environment::instance(),
-				  bool debug = false);
+                                  environment& env =
+                                  default_environment::instance(),
+                                  bool debug = false);
 
   /// \brief A simple wrapper to parse_infix_psl() and parse_prefix_ltl().
   ///
@@ -157,7 +157,7 @@ namespace spot
   /// parse_infix_psl() as a parse_error exception.
   SPOT_API formula
   parse_formula(const std::string& ltl_string,
-		environment& env = default_environment::instance());
+                environment& env = default_environment::instance());
 
   /// \brief Build a formula from a string representing a SERE.
   /// \param sere_string The string to parse.
@@ -178,10 +178,10 @@ namespace spot
   /// \warning This function is not reentrant.
   SPOT_API
   parsed_formula parse_infix_sere(const std::string& sere_string,
-				  environment& env =
-				  default_environment::instance(),
-				  bool debug = false,
-				  bool lenient = false);
+                                  environment& env =
+                                  default_environment::instance(),
+                                  bool debug = false,
+                                  bool lenient = false);
 
   /// \brief Fix location of diagnostics assuming the input is utf8.
   ///
@@ -208,7 +208,7 @@ namespace spot
   SPOT_API
   void
   fix_utf8_locations(const std::string& input_string,
-		     parse_error_list& error_list);
+                     parse_error_list& error_list);
 
   /// @}
 }

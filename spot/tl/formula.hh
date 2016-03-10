@@ -61,40 +61,40 @@ namespace spot
   /// \brief Operator types
   enum class op: uint8_t
   {
-    ff,				///< False
-      tt,			///< True
-      eword,			///< Empty word
-      ap,                   	///< Atomic proposition
+    ff,                         ///< False
+      tt,                       ///< True
+      eword,                    ///< Empty word
+      ap,                       ///< Atomic proposition
     // unary operators
-      Not,			///< Negation
-      X,			///< Next
-      F,			///< Eventually
-      G,			///< Globally
-      Closure,			///< PSL Closure
-      NegClosure,		///< Negated PSL Closure
-      NegClosureMarked,		///< marked version of the Negated PSL Clusure
+      Not,                      ///< Negation
+      X,                        ///< Next
+      F,                        ///< Eventually
+      G,                        ///< Globally
+      Closure,                  ///< PSL Closure
+      NegClosure,               ///< Negated PSL Closure
+      NegClosureMarked,         ///< marked version of the Negated PSL Clusure
     // binary operators
-      Xor,			///< Exclusive Or
-      Implies,			///< Implication
-      Equiv,			///< Equivalence
-      U,		      ///< until
-      R,		      ///< release (dual of until)
-      W,		      ///< weak until
-      M,		      ///< strong release (dual of weak until)
-      EConcat,	      ///< Seq
-      EConcatMarked,	      ///< Seq, Marked
-      UConcat,	      ///< Triggers
+      Xor,                      ///< Exclusive Or
+      Implies,                  ///< Implication
+      Equiv,                    ///< Equivalence
+      U,                      ///< until
+      R,                      ///< release (dual of until)
+      W,                      ///< weak until
+      M,                      ///< strong release (dual of weak until)
+      EConcat,        ///< Seq
+      EConcatMarked,          ///< Seq, Marked
+      UConcat,        ///< Triggers
     // n-ary operators
-      Or,		      ///< (omega-Rational) Or
-      OrRat,		      ///< Rational Or
-      And,		      ///< (omega-Rational) And
-      AndRat,		      ///< Rational And
-      AndNLM,		      ///< Non-Length-Matching Rational-And
-      Concat,		      ///< Concatenation
-      Fusion,		      ///< Fusion
+      Or,                     ///< (omega-Rational) Or
+      OrRat,                  ///< Rational Or
+      And,                    ///< (omega-Rational) And
+      AndRat,                 ///< Rational And
+      AndNLM,                 ///< Non-Length-Matching Rational-And
+      Concat,                 ///< Concatenation
+      Fusion,                 ///< Fusion
     // star-like operators
-      Star,		      ///< Star
-      FStar,		      ///< Fustion Star
+      Star,                   ///< Star
+      FStar,                  ///< Fustion Star
       };
 
 #ifndef SWIG
@@ -112,17 +112,17 @@ namespace spot
       // Saturate.
       ++refs_;
       if (SPOT_UNLIKELY(!refs_))
-	saturated_ = 1;
+        saturated_ = 1;
       return this;
     }
 
     void destroy() const
     {
       if (SPOT_LIKELY(refs_))
-	--refs_;
+        --refs_;
       else if (SPOT_LIKELY(id_ > 2) && SPOT_LIKELY(!saturated_))
-	// last reference to a node that is not a constant
-	destroy_aux();
+        // last reference to a node that is not a constant
+        destroy_aux();
     }
 
     static constexpr uint8_t unbounded()
@@ -135,7 +135,7 @@ namespace spot
     static const fnode* binop(op o, const fnode* f, const fnode* g);
     static const fnode* multop(op o, std::vector<const fnode*> l);
     static const fnode* bunop(op o, const fnode* f,
-			      uint8_t min, uint8_t max = unbounded());
+                              uint8_t min, uint8_t max = unbounded());
 
     op kind() const
     {
@@ -158,18 +158,18 @@ namespace spot
     {
       const fnode* n = this;
       for (auto o: l)
-	{
-	  if (!n->is(o))
-	    return false;
-	  n = n->nth(0);
-	}
+        {
+          if (!n->is(o))
+            return false;
+          n = n->nth(0);
+        }
       return true;
     }
 
     const fnode* get_child_of(op o) const
     {
       if (op_ != o)
-	return nullptr;
+        return nullptr;
       assert(size_ == 1);
       return nth(0);
     }
@@ -178,11 +178,11 @@ namespace spot
     {
       auto c = this;
       for (auto o: l)
-	{
-	  c = c->get_child_of(o);
-	  if (c == nullptr)
-	    return c;
-	}
+        {
+          c = c->get_child_of(o);
+          if (c == nullptr)
+            return c;
+        }
       return c;
     }
 
@@ -221,7 +221,7 @@ namespace spot
     const fnode* nth(unsigned i) const
     {
       if (i >= size())
-	throw std::runtime_error("access to non-existing child");
+        throw std::runtime_error("access to non-existing child");
       return children[i];
     }
 
@@ -263,14 +263,14 @@ namespace spot
     bool is_Kleene_star() const
     {
       if (op_ != op::Star)
-	return false;
+        return false;
       return min_ == 0 && max_ == unbounded();
     }
 
     static const fnode* one_star()
     {
       if (!one_star_)
-	one_star_ = bunop(op::Star, tt(), 0);
+        one_star_ = bunop(op::Star, tt(), 0);
       return one_star_;
     }
 
@@ -284,7 +284,7 @@ namespace spot
       unsigned pos = 0;
       unsigned s = size();
       while (pos < s && children[pos]->is_boolean())
-	++pos;
+        ++pos;
       return pos;
     }
 
@@ -417,11 +417,11 @@ namespace spot
     {
       size_t s = std::distance(begin, end);
       if (s > (size_t) UINT16_MAX)
-	throw std::runtime_error("too many children for formula");
+        throw std::runtime_error("too many children for formula");
       size_ = s;
       auto pos = children;
       for (auto i = begin; i != end; ++i)
-	*pos++ = *i;
+        *pos++ = *i;
       setup_props(o);
     }
 
@@ -432,11 +432,11 @@ namespace spot
 
     fnode(op o, const fnode* f, uint8_t min, uint8_t max)
       {
-	size_ = 1;
-	children[0] = f;
-	min_ = min;
-	max_ = max;
-	setup_props(o);
+        size_ = 1;
+        children[0] = f;
+        min_ = min;
+        max_ = max;
+        setup_props(o);
       }
 
     static const fnode* ff_;
@@ -444,13 +444,13 @@ namespace spot
     static const fnode* ew_;
     static const fnode* one_star_;
 
-    op op_;			// operator
-    uint8_t min_;		// range minimum (for star-like operators)
-    uint8_t max_;		// range maximum;
+    op op_;                     // operator
+    uint8_t min_;               // range minimum (for star-like operators)
+    uint8_t max_;               // range maximum;
     mutable uint8_t saturated_ = 0;
-    uint16_t size_;		// number of children
+    uint16_t size_;             // number of children
     mutable uint16_t refs_ = 0; // reference count - 1;
-    size_t id_;		// Also used as hash.
+    size_t id_;         // Also used as hash.
     static size_t next_id_;
 
     struct ltl_prop
@@ -468,24 +468,24 @@ namespace spot
       //
       // Also choose a name that makes sense when prefixed with
       // "the formula is".
-      bool boolean:1;		   // No temporal operators.
+      bool boolean:1;              // No temporal operators.
       bool sugar_free_boolean:1; // Only AND, OR, and NOT operators.
-      bool in_nenoform:1;	   // Negative Normal Form.
-      bool syntactic_si:1;	   // LTL-X or siPSL
-      bool sugar_free_ltl:1;	   // No F and G operators.
-      bool ltl_formula:1;	   // Only LTL operators.
-      bool psl_formula:1;	   // Only PSL operators.
-      bool sere_formula:1;	   // Only SERE operators.
-      bool finite:1;		   // Finite SERE formulae, or Bool+X forms.
-      bool eventual:1;	   // Purely eventual formula.
-      bool universal:1;	   // Purely universal formula.
+      bool in_nenoform:1;          // Negative Normal Form.
+      bool syntactic_si:1;         // LTL-X or siPSL
+      bool sugar_free_ltl:1;       // No F and G operators.
+      bool ltl_formula:1;          // Only LTL operators.
+      bool psl_formula:1;          // Only PSL operators.
+      bool sere_formula:1;         // Only SERE operators.
+      bool finite:1;               // Finite SERE formulae, or Bool+X forms.
+      bool eventual:1;     // Purely eventual formula.
+      bool universal:1;    // Purely universal formula.
       bool syntactic_safety:1;   // Syntactic Safety Property.
       bool syntactic_guarantee:1;   // Syntactic Guarantee Property.
       bool syntactic_obligation:1;  // Syntactic Obligation Property.
       bool syntactic_recurrence:1;  // Syntactic Recurrence Property.
       bool syntactic_persistence:1; // Syntactic Persistence Property.
-      bool not_marked:1;	   // No occurrence of EConcatMarked.
-      bool accepting_eword:1;	   // Accepts the empty word.
+      bool not_marked:1;           // No occurrence of EConcatMarked.
+      bool accepting_eword:1;      // Accepts the empty word.
       bool lbt_atomic_props:1;   // Use only atomic propositions like p42.
       bool spin_atomic_props:1;  // Use only spin-compatible atomic props.
     };
@@ -511,48 +511,48 @@ namespace spot
       assert(left);
       assert(right);
       if (left == right)
-	return false;
+        return false;
 
       // We want Boolean formulae first.
       bool lib = left->is_boolean();
       if (lib != right->is_boolean())
-	return lib;
+        return lib;
 
       // We have two Boolean formulae
       if (lib)
-	{
-	  bool lconst = left->is_constant();
-	  if (lconst != right->is_constant())
-	    return lconst;
-	  if (!lconst)
-	    {
-	      auto get_literal = [](const fnode* f) -> const fnode*
-		{
-		  if (f->is(op::Not))
-		    f = f->nth(0);
-		  if (f->is(op::ap))
-		    return f;
-		  return nullptr;
-		};
-	      // Literals should come first
-	      const fnode* litl = get_literal(left);
-	      const fnode* litr = get_literal(right);
-	      if (!litl != !litr)
-		return litl;
-	      if (litl)
-		{
-		  // And they should be sorted alphabetically
-		  int cmp = atomic_prop_cmp(litl, litr);
-		  if (cmp)
-		    return cmp < 0;
-		}
-	    }
-	}
+        {
+          bool lconst = left->is_constant();
+          if (lconst != right->is_constant())
+            return lconst;
+          if (!lconst)
+            {
+              auto get_literal = [](const fnode* f) -> const fnode*
+                {
+                  if (f->is(op::Not))
+                    f = f->nth(0);
+                  if (f->is(op::ap))
+                    return f;
+                  return nullptr;
+                };
+              // Literals should come first
+              const fnode* litl = get_literal(left);
+              const fnode* litr = get_literal(right);
+              if (!litl != !litr)
+                return litl;
+              if (litl)
+                {
+                  // And they should be sorted alphabetically
+                  int cmp = atomic_prop_cmp(litl, litr);
+                  if (cmp)
+                    return cmp < 0;
+                }
+            }
+        }
 
       size_t l = left->id();
       size_t r = right->id();
       if (l != r)
-	return l < r;
+        return l < r;
       // Because the hash code assigned to each formula is the
       // number of formulae constructed so far, it is very unlikely
       // that we will ever reach a case were two different formulae
@@ -597,53 +597,53 @@ namespace spot
     formula(const formula& f) noexcept
       : ptr_(f.ptr_)
       {
-	if (ptr_)
-	  ptr_->clone();
+        if (ptr_)
+          ptr_->clone();
       }
 
     formula(formula&& f) noexcept
       : ptr_(f.ptr_)
       {
-	f.ptr_ = nullptr;
+        f.ptr_ = nullptr;
       }
 
     ~formula()
       {
-	if (ptr_)
-	  ptr_->destroy();
+        if (ptr_)
+          ptr_->destroy();
       }
 
     const formula& operator=(std::nullptr_t)
       {
-	this->~formula();
-	ptr_ = nullptr;
-	return *this;
+        this->~formula();
+        ptr_ = nullptr;
+        return *this;
       }
 
     const formula& operator=(const formula& f)
       {
-	this->~formula();
-	if ((ptr_ = f.ptr_))
-	  ptr_->clone();
-	return *this;
+        this->~formula();
+        if ((ptr_ = f.ptr_))
+          ptr_->clone();
+        return *this;
       }
 
     const formula& operator=(formula&& f) noexcept
       {
-	std::swap(f.ptr_, ptr_);
-	return *this;
+        std::swap(f.ptr_, ptr_);
+        return *this;
       }
 
     bool operator<(const formula& other) const noexcept
     {
       if (SPOT_UNLIKELY(!other.ptr_))
-	return false;
+        return false;
       if (SPOT_UNLIKELY(!ptr_))
-	return true;
+        return true;
       if (id() < other.id())
-	return true;
+        return true;
       if (id() > other.id())
-	return false;
+        return false;
       // The case where id()==other.id() but ptr_ != other.ptr_ is
       // very unlikely (we would need to build more that UINT_MAX
       // formulas), so let's just compare pointer, and ignore the fact
@@ -725,20 +725,20 @@ namespace spot
     /// @}
 
 #ifdef SWIG
-#define SPOT_DEF_UNOP(Name)			\
-    static formula Name(const formula& f)	\
-    {						\
-      return unop(op::Name, f);			\
+#define SPOT_DEF_UNOP(Name)                     \
+    static formula Name(const formula& f)       \
+    {                                           \
+      return unop(op::Name, f);                 \
     }
 #else // !SWIG
-#define SPOT_DEF_UNOP(Name)			\
-    static formula Name(const formula& f)	\
-    {						\
-      return unop(op::Name, f);			\
-    }						\
-    static formula Name(formula&& f)		\
-    {						\
-      return unop(op::Name, std::move(f));	\
+#define SPOT_DEF_UNOP(Name)                     \
+    static formula Name(const formula& f)       \
+    {                                           \
+      return unop(op::Name, f);                 \
+    }                                           \
+    static formula Name(formula&& f)            \
+    {                                           \
+      return unop(op::Name, std::move(f));      \
     }
 #endif // !SWIG
     /// \brief Construct a negation
@@ -804,28 +804,28 @@ namespace spot
 #endif //SWIG
 
 #ifdef SWIG
-#define SPOT_DEF_BINOP(Name)					\
-    static formula Name(const formula& f, const formula& g)	\
-    {								\
-      return binop(op::Name, f, g);				\
+#define SPOT_DEF_BINOP(Name)                                    \
+    static formula Name(const formula& f, const formula& g)     \
+    {                                                           \
+      return binop(op::Name, f, g);                             \
     }
 #else // !SWIG
-#define SPOT_DEF_BINOP(Name)					\
-    static formula Name(const formula& f, const formula& g)	\
-    {								\
-      return binop(op::Name, f, g);				\
-    }								\
-    static formula Name(const formula& f, formula&& g)		\
-    {								\
-      return binop(op::Name, f, std::move(g));			\
-    }								\
-    static formula Name(formula&& f, const formula& g)		\
-    {								\
-      return binop(op::Name, std::move(f), g);			\
-    }								\
-    static formula Name(formula&& f, formula&& g)		\
-    {								\
-      return binop(op::Name, std::move(f), std::move(g));	\
+#define SPOT_DEF_BINOP(Name)                                    \
+    static formula Name(const formula& f, const formula& g)     \
+    {                                                           \
+      return binop(op::Name, f, g);                             \
+    }                                                           \
+    static formula Name(const formula& f, formula&& g)          \
+    {                                                           \
+      return binop(op::Name, f, std::move(g));                  \
+    }                                                           \
+    static formula Name(formula&& f, const formula& g)          \
+    {                                                           \
+      return binop(op::Name, std::move(f), g);                  \
+    }                                                           \
+    static formula Name(formula&& f, formula&& g)               \
+    {                                                           \
+      return binop(op::Name, std::move(f), std::move(g));       \
     }
 #endif // !SWIG
     /// \brief Construct an Xor formula
@@ -889,8 +889,8 @@ namespace spot
       std::vector<const fnode*> tmp;
       tmp.reserve(l.size());
       for (auto f: l)
-	if (f.ptr_)
-	  tmp.push_back(f.ptr_->clone());
+        if (f.ptr_)
+          tmp.push_back(f.ptr_->clone());
       return formula(fnode::multop(o, std::move(tmp)));
     }
 
@@ -900,29 +900,29 @@ namespace spot
       std::vector<const fnode*> tmp;
       tmp.reserve(l.size());
       for (auto f: l)
-	if (f.ptr_)
-	  tmp.push_back(f.to_node_());
+        if (f.ptr_)
+          tmp.push_back(f.to_node_());
       return formula(fnode::multop(o, std::move(tmp)));
     }
 #endif // !SWIG
     /// @}
 
 #ifdef SWIG
-#define SPOT_DEF_MULTOP(Name)				\
-    static formula Name(const std::vector<formula>& l)	\
-    {							\
-      return multop(op::Name, l);			\
+#define SPOT_DEF_MULTOP(Name)                           \
+    static formula Name(const std::vector<formula>& l)  \
+    {                                                   \
+      return multop(op::Name, l);                       \
     }
 #else // !SWIG
-#define SPOT_DEF_MULTOP(Name)				\
-    static formula Name(const std::vector<formula>& l)	\
-    {							\
-      return multop(op::Name, l);			\
-    }							\
-							\
-    static formula Name(std::vector<formula>&& l)	\
-    {							\
-      return multop(op::Name, std::move(l));		\
+#define SPOT_DEF_MULTOP(Name)                           \
+    static formula Name(const std::vector<formula>& l)  \
+    {                                                   \
+      return multop(op::Name, l);                       \
+    }                                                   \
+                                                        \
+    static formula Name(std::vector<formula>&& l)       \
+    {                                                   \
+      return multop(op::Name, std::move(l));            \
     }
 #endif // !SWIG
     /// \brief Construct an Or formula.
@@ -966,16 +966,16 @@ namespace spot
     /// \pre \a o should be op::Star or op::FStar.
     /// @{
     static formula bunop(op o, const formula& f,
-			 uint8_t min = 0U,
-			 uint8_t max = unbounded())
+                         uint8_t min = 0U,
+                         uint8_t max = unbounded())
     {
       return formula(fnode::bunop(o, f.ptr_->clone(), min, max));
     }
 
 #ifndef SWIG
     static formula bunop(op o, formula&& f,
-			 uint8_t min = 0U,
-			 uint8_t max = unbounded())
+                         uint8_t min = 0U,
+                         uint8_t max = unbounded())
     {
       return formula(fnode::bunop(o, f.to_node_(), min, max));
     }
@@ -983,26 +983,26 @@ namespace spot
     ///@}
 
 #if SWIG
-#define SPOT_DEF_BUNOP(Name)				\
-    static formula Name(const formula& f,		\
-			uint8_t min = 0U,		\
-			uint8_t max = unbounded())	\
-    {							\
-      return bunop(op::Name, f, min, max);		\
+#define SPOT_DEF_BUNOP(Name)                            \
+    static formula Name(const formula& f,               \
+                        uint8_t min = 0U,               \
+                        uint8_t max = unbounded())      \
+    {                                                   \
+      return bunop(op::Name, f, min, max);              \
     }
 #else // !SWIG
-#define SPOT_DEF_BUNOP(Name)				\
-    static formula Name(const formula& f,		\
-			uint8_t min = 0U,		\
-			uint8_t max = unbounded())	\
-    {							\
-      return bunop(op::Name, f, min, max);		\
-    }							\
-    static formula Name(formula&& f,			\
-			uint8_t min = 0U,		\
-			uint8_t max = unbounded())	\
-    {							\
-      return bunop(op::Name, std::move(f), min, max);	\
+#define SPOT_DEF_BUNOP(Name)                            \
+    static formula Name(const formula& f,               \
+                        uint8_t min = 0U,               \
+                        uint8_t max = unbounded())      \
+    {                                                   \
+      return bunop(op::Name, f, min, max);              \
+    }                                                   \
+    static formula Name(formula&& f,                    \
+                        uint8_t min = 0U,               \
+                        uint8_t max = unbounded())      \
+    {                                                   \
+      return bunop(op::Name, std::move(f), min, max);   \
     }
 #endif
     /// \brief Create SERE for f[*min..max]
@@ -1015,20 +1015,20 @@ namespace spot
     /// This operator is a generalization of the (+) operator
     /// defined in the following paper.
     /** \verbatim
-        @InProceedings{	  dax.09.atva,
-	  author	= {Christian Dax and Felix Klaedtke and Stefan Leue},
-	  title		= {Specification Languages for Stutter-Invariant Regular
-			  Properties},
-	  booktitle	= {Proceedings of the 7th International Symposium on
-			  Automated Technology for Verification and Analysis
-			  (ATVA'09)},
-	  pages		= {244--254},
-	  year		= {2009},
-	  volume	= {5799},
-	  series	= {Lecture Notes in Computer Science},
-	  publisher	= {Springer-Verlag}
-	}
-	\endverbatim */
+        @InProceedings{   dax.09.atva,
+          author        = {Christian Dax and Felix Klaedtke and Stefan Leue},
+          title         = {Specification Languages for Stutter-Invariant Regular
+                          Properties},
+          booktitle     = {Proceedings of the 7th International Symposium on
+                          Automated Technology for Verification and Analysis
+                          (ATVA'09)},
+          pages         = {244--254},
+          year          = {2009},
+          volume        = {5799},
+          series        = {Lecture Notes in Computer Science},
+          publisher     = {Springer-Verlag}
+        }
+        \endverbatim */
     /// @{
     SPOT_DEF_BUNOP(FStar);
     /// @}
@@ -1105,7 +1105,7 @@ namespace spot
     {
       auto f = ptr_->get_child_of(o);
       if (f)
-	f->clone();
+        f->clone();
       return formula(f);
     }
 
@@ -1120,7 +1120,7 @@ namespace spot
     {
       auto f = ptr_->get_child_of(l);
       if (f)
-	f->clone();
+        f->clone();
       return formula(f);
     }
 #endif
@@ -1167,41 +1167,41 @@ namespace spot
       const fnode*const* ptr_;
     public:
       formula_child_iterator()
-	: ptr_(nullptr)
-	{
-	}
+        : ptr_(nullptr)
+        {
+        }
 
       formula_child_iterator(const fnode*const* f)
-	: ptr_(f)
-	{
-	}
+        : ptr_(f)
+        {
+        }
 
       bool operator==(formula_child_iterator o)
       {
-	return ptr_ == o.ptr_;
+        return ptr_ == o.ptr_;
       }
 
       bool operator!=(formula_child_iterator o)
       {
-	return ptr_ != o.ptr_;
+        return ptr_ != o.ptr_;
       }
 
       formula operator*()
       {
-	return formula((*ptr_)->clone());
+        return formula((*ptr_)->clone());
       }
 
       formula_child_iterator operator++()
       {
-	++ptr_;
-	return *this;
+        ++ptr_;
+        return *this;
       }
 
       formula_child_iterator operator++(int)
       {
-	auto tmp = *this;
-	++ptr_;
-	return tmp;
+        auto tmp = *this;
+        ++ptr_;
+        return tmp;
       }
     };
 
@@ -1286,10 +1286,10 @@ namespace spot
     bool is_literal()
     {
       return (is(op::ap) ||
-	      // If f is in nenoform, Not can only occur in front of
-	      // an atomic proposition.  So this way we do not have
-	      // to check the type of the child.
-	      (is(op::Not) && is_boolean() && is_in_nenoform()));
+              // If f is in nenoform, Not can only occur in front of
+              // an atomic proposition.  So this way we do not have
+              // to check the type of the child.
+              (is(op::Not) && is_boolean() && is_in_nenoform()));
     }
 
     /// \brief Print the name of an atomic proposition.
@@ -1351,10 +1351,10 @@ namespace spot
       return formula(ptr_->boolean_operands(width));
     }
 
-#define SPOT_DEF_PROP(Name)			\
-    bool Name() const				\
-    {						\
-      return ptr_->Name();			\
+#define SPOT_DEF_PROP(Name)                     \
+    bool Name() const                           \
+    {                                           \
+      return ptr_->Name();                      \
     }
     ////////////////
     // Properties //
@@ -1386,19 +1386,19 @@ namespace spot
     ///
     /// Pure eventuality formulae are defined in
     /** \verbatim
-	@InProceedings{	  etessami.00.concur,
-	author  	= {Kousha Etessami and Gerard J. Holzmann},
-	title		= {Optimizing {B\"u}chi Automata},
-	booktitle	= {Proceedings of the 11th International Conference on
-	Concurrency Theory (Concur'2000)},
-	pages		= {153--167},
-	year		= {2000},
-	editor  	= {C. Palamidessi},
-	volume  	= {1877},
-	series  	= {Lecture Notes in Computer Science},
-	publisher	= {Springer-Verlag}
-	}
-	\endverbatim */
+        @InProceedings{   etessami.00.concur,
+        author          = {Kousha Etessami and Gerard J. Holzmann},
+        title           = {Optimizing {B\"u}chi Automata},
+        booktitle       = {Proceedings of the 11th International Conference on
+        Concurrency Theory (Concur'2000)},
+        pages           = {153--167},
+        year            = {2000},
+        editor          = {C. Palamidessi},
+        volume          = {1877},
+        series          = {Lecture Notes in Computer Science},
+        publisher       = {Springer-Verlag}
+        }
+        \endverbatim */
     ///
     /// A word that satisfies a pure eventuality can be prefixed by
     /// anything and still satisfies the formula.
@@ -1407,19 +1407,19 @@ namespace spot
     ///
     /// Purely universal formulae are defined in
     /** \verbatim
-	@InProceedings{	  etessami.00.concur,
-	author  	= {Kousha Etessami and Gerard J. Holzmann},
-	title		= {Optimizing {B\"u}chi Automata},
-	booktitle	= {Proceedings of the 11th International Conference on
-	Concurrency Theory (Concur'2000)},
-	pages		= {153--167},
-	year		= {2000},
-	editor  	= {C. Palamidessi},
-	volume  	= {1877},
-	series  	= {Lecture Notes in Computer Science},
-	publisher	= {Springer-Verlag}
-	}
-	\endverbatim */
+        @InProceedings{   etessami.00.concur,
+        author          = {Kousha Etessami and Gerard J. Holzmann},
+        title           = {Optimizing {B\"u}chi Automata},
+        booktitle       = {Proceedings of the 11th International Conference on
+        Concurrency Theory (Concur'2000)},
+        pages           = {153--167},
+        year            = {2000},
+        editor          = {C. Palamidessi},
+        volume          = {1877},
+        series          = {Lecture Notes in Computer Science},
+        publisher       = {Springer-Verlag}
+        }
+        \endverbatim */
     ///
     /// Any (non-empty) suffix of a word that satisfies a purely
     /// universal formula also satisfies the formula.
@@ -1461,52 +1461,52 @@ namespace spot
       formula map(Trans trans)
     {
       switch (op o = kind())
-	{
-	case op::ff:
-	case op::tt:
-	case op::eword:
-	case op::ap:
-	  return *this;
-	case op::Not:
-	case op::X:
-	case op::F:
-	case op::G:
-	case op::Closure:
-	case op::NegClosure:
-	case op::NegClosureMarked:
-	  return unop(o, trans((*this)[0]));
-	case op::Xor:
-	case op::Implies:
-	case op::Equiv:
-	case op::U:
-	case op::R:
-	case op::W:
-	case op::M:
-	case op::EConcat:
-	case op::EConcatMarked:
-	case op::UConcat:
-	  {
-	    formula tmp = trans((*this)[0]);
-	    return binop(o, tmp, trans((*this)[1]));
-	  }
-	case op::Or:
-	case op::OrRat:
-	case op::And:
-	case op::AndRat:
-	case op::AndNLM:
-	case op::Concat:
-	case op::Fusion:
-	  {
-	    std::vector<formula> tmp;
-	    tmp.reserve(size());
-	    for (auto f: *this)
-	      tmp.push_back(trans(f));
-	    return multop(o, std::move(tmp));
-	  }
-	case op::Star:
-	case op::FStar:
-	  return bunop(o, trans((*this)[0]), min(), max());
-	}
+        {
+        case op::ff:
+        case op::tt:
+        case op::eword:
+        case op::ap:
+          return *this;
+        case op::Not:
+        case op::X:
+        case op::F:
+        case op::G:
+        case op::Closure:
+        case op::NegClosure:
+        case op::NegClosureMarked:
+          return unop(o, trans((*this)[0]));
+        case op::Xor:
+        case op::Implies:
+        case op::Equiv:
+        case op::U:
+        case op::R:
+        case op::W:
+        case op::M:
+        case op::EConcat:
+        case op::EConcatMarked:
+        case op::UConcat:
+          {
+            formula tmp = trans((*this)[0]);
+            return binop(o, tmp, trans((*this)[1]));
+          }
+        case op::Or:
+        case op::OrRat:
+        case op::And:
+        case op::AndRat:
+        case op::AndNLM:
+        case op::Concat:
+        case op::Fusion:
+          {
+            std::vector<formula> tmp;
+            tmp.reserve(size());
+            for (auto f: *this)
+              tmp.push_back(trans(f));
+            return multop(o, std::move(tmp));
+          }
+        case op::Star:
+        case op::FStar:
+          return bunop(o, trans((*this)[0]), min(), max());
+        }
       SPOT_UNREACHABLE();
     }
 
@@ -1519,16 +1519,16 @@ namespace spot
       void traverse(Func func)
     {
       if (func(*this))
-	return;
+        return;
       for (auto f: *this)
-	f.traverse(func);
+        f.traverse(func);
     }
   };
 
   /// Print the properties of formula \a f on stream \a out.
   SPOT_API
   std::ostream& print_formula_props(std::ostream& out, const formula& f,
-				    bool abbreviated = false);
+                                    bool abbreviated = false);
 
   /// List the properties of formula \a f.
   SPOT_API

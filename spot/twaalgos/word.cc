@@ -46,12 +46,12 @@ namespace spot
     {
       bdd all = bddtrue;
       for (auto& i: cycle)
-	all &= i;
+        all &= i;
       if (all != bddfalse)
-	{
-	  cycle.clear();
-	  cycle.push_back(all);
-	}
+        {
+          cycle.clear();
+          cycle.push_back(all);
+        }
     }
     // If the last formula of the prefix is compatible with the
     // last formula of the cycle, we can shift the cycle and
@@ -63,12 +63,12 @@ namespace spot
     //   !a|!b; cycle{a&b}
     while (!prefix.empty())
       {
-	bdd a = prefix.back() & cycle.back();
-	if (a == bddfalse)
-	  break;
-	prefix.pop_back();
-	cycle.pop_back();
-	cycle.push_front(a);
+        bdd a = prefix.back() & cycle.back();
+        if (a == bddfalse)
+          break;
+        prefix.pop_back();
+        cycle.pop_back();
+        cycle.push_front(a);
       }
     // Get rid of any disjunction.
     //
@@ -88,19 +88,19 @@ namespace spot
     auto d = w.get_dict();
     if (!w.prefix.empty())
       for (auto& i: w.prefix)
-	{
-	  bdd_print_formula(os, d, i);
-	  os << "; ";
-	}
+        {
+          bdd_print_formula(os, d, i);
+          os << "; ";
+        }
     assert(!w.cycle.empty());
     bool notfirst = false;
     os << "cycle{";
     for (auto& i: w.cycle)
       {
-	if (notfirst)
-	  os << "; ";
-	notfirst = true;
-	bdd_print_formula(os, d, i);
+        if (notfirst)
+          os << "; ";
+        notfirst = true;
+        bdd_print_formula(os, d, i);
       }
     os << '}';
     return os;

@@ -72,60 +72,60 @@ main(int argc, char** argv)
     {
       // generate n random automata
       for (unsigned i = 0; i < n; ++i)
-	{
-	  spot::twa_graph_ptr a;
-	  do
-	    {
-	      spot::srand(++seed);
-	      a = spot::random_graph(states_n, d, &ap, dict, 2, 0.1, 0.5,
-					  true);
-	    }
-	  while (a->is_empty());
-	  auto na = spot::remove_fin(spot::dtwa_complement(a));
+        {
+          spot::twa_graph_ptr a;
+          do
+            {
+              spot::srand(++seed);
+              a = spot::random_graph(states_n, d, &ap, dict, 2, 0.1, 0.5,
+                                          true);
+            }
+          while (a->is_empty());
+          auto na = spot::remove_fin(spot::dtwa_complement(a));
 
-	  std::cout << d << ',' << props_n << ',' << seed;
-	  stats.print(a);
-	  stats.print(na);
+          std::cout << d << ',' << props_n << ',' << seed;
+          stats.print(a);
+          stats.print(na);
 
-	  bool prev = true;
-	  for (int algo = 1; algo <= 8; ++algo)
-	    {
-	      std::cout << ',';
-	      if (disable_algo[algo - 1])
-		continue;
+          bool prev = true;
+          for (int algo = 1; algo <= 8; ++algo)
+            {
+              std::cout << ',';
+              if (disable_algo[algo - 1])
+                continue;
 
-	      auto dup_a = spot::make_twa_graph(a, spot::twa::prop_set::all());
-	      auto dup_na = spot::make_twa_graph(na,
-						 spot::twa::prop_set::all());
+              auto dup_a = spot::make_twa_graph(a, spot::twa::prop_set::all());
+              auto dup_na = spot::make_twa_graph(na,
+                                                 spot::twa::prop_set::all());
 
-	      spot::stopwatch sw;
-	      sw.start();
-	      bool res = spot::is_stutter_invariant(std::move(dup_a),
-						    std::move(dup_na),
-						    apdict, algo);
-	      auto time = sw.stop();
-	      std::cout << time;
-	      if (algo > 1 && res != prev)
-		{
-		  std::cerr << "\nerror: algorithms " << algo - 1
-			    << " (" << prev << ") and " << algo << " ("
-			    << res << ") disagree on seed "
-			    << seed << "\n";
-		  exit(2);
-		}
-	      if (time >= 30.0)
-		{
-		  disable_algo[algo - 1] = 1;
-		  --algo_count;
-		}
-	      prev = res;
-	    }
-	  std::cout << ',' << prev << '\n';;
-	  if (algo_count == 0)
-	    break;
-	}
+              spot::stopwatch sw;
+              sw.start();
+              bool res = spot::is_stutter_invariant(std::move(dup_a),
+                                                    std::move(dup_na),
+                                                    apdict, algo);
+              auto time = sw.stop();
+              std::cout << time;
+              if (algo > 1 && res != prev)
+                {
+                  std::cerr << "\nerror: algorithms " << algo - 1
+                            << " (" << prev << ") and " << algo << " ("
+                            << res << ") disagree on seed "
+                            << seed << "\n";
+                  exit(2);
+                }
+              if (time >= 30.0)
+                {
+                  disable_algo[algo - 1] = 1;
+                  --algo_count;
+                }
+              prev = res;
+            }
+          std::cout << ',' << prev << '\n';;
+          if (algo_count == 0)
+            break;
+        }
       if (algo_count == 0)
-	break;
+        break;
     }
   dict->unregister_all_my_variables(&ap);
   return 0;
