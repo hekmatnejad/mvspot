@@ -173,6 +173,42 @@ namespace spot
     };
 
     //////////////////////////////////////////////////
+    // Hyper-Edge storage
+    //////////////////////////////////////////////////
+
+    template<typename StateOut,
+             typename HyperEdge>
+    struct SPOT_API hyper_edge_storage
+    {
+      StateOut dst;         // Destination state
+      HyperEdge next_succ;  // Successor leading to the next state of the
+                            // same hyper-edge
+
+      explicit hyper_edge_storage()
+        noexcept
+      {
+      }
+
+      template <typename... Args>
+        hyper_edge_storage(StateOut dst, HyperEdge next_succ)
+        noexcept(std::is_nothrow_constructible<StateOut, StateOut>::value
+                 && std::is_nothrow_constructible<HyperEdge, HyperEdge>::value)
+        : dst(dst), next_succ(next_succ)
+      {
+      }
+
+      bool operator<(const hyper_edge_storage& other) const
+      {
+        return dst < other.dst;
+      }
+
+      bool operator==(const hyper_edge_storage& other)
+      {
+        return dst == other.dst;
+      }
+    };
+
+    //////////////////////////////////////////////////
     // Edge storage
     //////////////////////////////////////////////////
 
@@ -214,7 +250,6 @@ namespace spot
           return true;
         if (src > other.src)
           return false;
-        // This might be costly if the destination is a vector
         if (dst < other.dst)
           return true;
         if (dst > other.dst)
@@ -228,6 +263,104 @@ namespace spot
           dst == other.dst &&
           this->data() == other.data();
       }
+    };
+
+    //////////////////////////////////////////////////
+    // Hyper-Edge iterator
+    //////////////////////////////////////////////////
+
+    template <typename Graph>
+    class SPOT_API hyper_edge_iterator: public
+    std::iterator<std::forward_iterator_tag,
+                  typename
+                  std::conditional<std::is_const<Graph>::value,
+                                   const typename Graph::hyper_edge_storage_t,
+                                   typename Graph::hyper_edge_storage_t>::type>
+    {
+      typedef
+        std::iterator<std::forward_iterator_tag,
+                      typename
+                      std::conditional<std::is_const<Graph>::value,
+                                       const typename
+                                       Graph::hyper_edge_storage_t,
+                                       typename
+                                       Graph::hyper_edge_storage_t>::type>
+        super;
+
+    public:
+      typedef typename Graph::edge edge;
+      typedef typename Graph::hyper_edge hyper_edge;
+
+      hyper_edge_iterator() noexcept
+        : g_(nullptr), h_(0)
+      {
+      }
+
+      hyper_edge_iterator(Graph* g, hyper_edge h) noexcept
+        : g_(g), h_(h)
+      {
+      }
+
+      bool operator==(hyper_edge_iterator o) const
+      {
+        return h_ == o.h_;
+      }
+
+      bool operator!=(hyper_edge_iterator o) const
+      {
+        return h_ != o.h_;
+      }
+
+      typename super::reference
+      operator*()
+      {
+        return g_->hyper_edge_storage(h_);
+      }
+
+      const typename super::reference
+      operator*() const
+      {
+        return g_->hyper_edge_storage(h_);
+      }
+
+      typename super::pointer
+      operator->()
+      {
+        return &g_->hyper_edge_storage(h_);
+      }
+
+      const typename super::pointer
+      operator->() const
+      {
+        return &g_->hyper_edge_storage(h_);
+      }
+
+      hyper_edge_iterator operator++()
+      {
+        h_ = operator*().next_succ;
+        return *this;
+      }
+
+      hyper_edge_iterator operator++(int)
+      {
+        hyper_edge_iterator hi = *this;
+        h_ = operator*().next_succ;
+        return hi;
+      }
+
+      operator bool() const
+      {
+        return h_;
+      }
+
+      edge trans() const
+      {
+        return h_;
+      }
+
+    protected:
+      Graph* g_;
+      hyper_edge h_;
     };
 
     //////////////////////////////////////////////////
@@ -428,6 +561,37 @@ namespace spot
     };
 
     //////////////////////////////////////////////////
+    // States OUT
+    //////////////////////////////////////////////////
+
+    // Fake container listing the destination states of an hyper-edge.
+
+    template <typename Graph>
+    class SPOT_API states_out
+    {
+    public:
+      typedef typename Graph::hyper_edge hyper_edge;
+      states_out(Graph* g, hyper_edge h) noexcept
+        : g_(g), h_(h)
+      {
+      }
+
+      hyper_edge_iterator<Graph> begin()
+      {
+        return {g_, h_};
+      }
+
+      hyper_edge_iterator<Graph> end()
+      {
+        return {};
+      }
+
+    protected:
+      Graph* g_;
+      hyper_edge h_;
+    };
+
+    //////////////////////////////////////////////////
     // all_trans
     //////////////////////////////////////////////////
 
@@ -587,11 +751,10 @@ namespace spot
     typedef unsigned state;
     typedef unsigned edge;
 
+
     // The type of an output state (when seen from a edge)
     // depends on the kind of graph we build
-    typedef typename std::conditional<Alternating,
-                                      std::vector<state>,
-                                      state>::type out_state;
+    typedef state out_state;
 
     typedef internal::distate_storage<edge,
                                       internal::boxed_label<State_Data>>
@@ -1092,6 +1255,161 @@ namespace spot
 
       //std::cerr << "\nafter defrag\n";
       //dump_storage(std::cerr);
+    }
+  };
+
+  template <typename State_Data, typename Edge_Data>
+  class digraph<State_Data, Edge_Data, true>:
+    public digraph<State_Data, Edge_Data>
+  {
+  public:
+    typedef typename digraph<State_Data, Edge_Data>::state state;
+    typedef typename digraph<State_Data, Edge_Data>::edge edge;
+    typedef unsigned hyper_edge;
+
+    typedef typename digraph<State_Data, Edge_Data>::edge_storage_t
+    edge_storage_t;
+    typedef internal::hyper_edge_storage<state, hyper_edge>
+    hyper_edge_storage_t;
+    typedef std::vector<hyper_edge_storage_t> hyper_edge_vector_t;
+
+  protected:
+    hyper_edge_vector_t hyper_edges_;
+
+  public:
+    digraph(unsigned max_states = 10, unsigned max_trans = 0)
+      : digraph<State_Data, Edge_Data>(max_states, max_trans)
+    {
+      hyper_edges_.resize(1);
+    }
+
+    hyper_edge_storage_t&
+    hyper_edge_storage(hyper_edge e)
+    {
+      assert(e < hyper_edges_.size());
+      return hyper_edges_[e];
+    }
+
+    const hyper_edge_storage_t&
+    hyper_edge_storage(hyper_edge e) const
+    {
+      assert(e < hyper_edges_.size());
+      return hyper_edges_[e];
+    }
+
+    // add a new destination to the last part of an existing hyper_edge
+    // used for optimization
+    hyper_edge
+    add_hyper_edge_destination_opti(hyper_edge hyper, state dst)
+    {
+      hyper_edge hsize = hyper_edges_.size();
+
+      hyper_edges_[hyper].next_succ = hsize;
+      hyper_edges_.emplace_back(dst, 0);
+
+      return hsize;
+    }
+
+    // add a new destination to an existing hyper_edge
+    // edge give access to the entire hyper_edge data
+    hyper_edge
+    add_hyper_edge_destination(edge e, state dst)
+    {
+      assert(e < this->edges_.size());
+
+      // maybe add field in edge to access last hyper-edge
+      auto hyper = this->edges_[e].dst;
+      while (hyper_edges_[hyper].next_succ)
+        hyper = hyper_edges_[hyper].next_succ;
+
+      return add_hyper_edge_destination_opti(hyper, dst);
+    }
+
+    template <typename... Args>
+    edge
+    new_edge(state src, state dst, Args&&... args)
+    {
+      assert(src < this->states_.size());
+
+      hyper_edge hyper = hyper_edges_.size();
+      hyper_edges_.emplace_back(dst, 0);
+      // the edge destination will refer to the hyper-edge rather than
+      // the state
+      dst = hyper;
+
+      edge t = this->edges_.size();
+      this->edges_.emplace_back(dst, 0, src, std::forward<Args>(args)...);
+
+      edge st = this->states_[src].succ_tail;
+      assert(st < t || !st);
+      if (!st)
+        this->states_[src].succ = t;
+      else
+        this->edges_[st].next_succ = t;
+      this->states_[src].succ_tail = t;
+      return t;
+    }
+
+    template <typename... Args>
+    edge
+    new_edge(state src,
+             const state* dst_list_begin, const state* dst_list_end,
+             Args&&... args)
+    {
+      assert(src < this->states_.size());
+
+      hyper_edge hyper = this->hyper_edges_.size();
+      this->hyper_edges_.emplace_back(*dst_list_begin, 0);
+
+      edge t = this->edges_.size();
+      this->edges_.emplace_back(hyper, 0, src, std::forward<Args>(args)...);
+
+      // append remaining states
+      for (auto it = ++dst_list_begin; it < dst_list_end; ++it)
+        hyper = add_hyper_edge_destination_opti(hyper, *it);
+
+      // Update state succ_tail
+      edge st = this->states_[src].succ_tail;
+      assert(st < t || !st);
+      if (!st)
+        this->states_[src].succ = t;
+      else
+        this->edges_[st].next_succ = t;
+      this->states_[src].succ_tail = t;
+      return t;
+    }
+
+    template <typename... Args>
+    edge
+    new_edge(state src,
+             std::initializer_list<state> dst_list, Args&&... args)
+    {
+      return new_edge(src, std::begin(dst_list), std::end(dst_list),
+                      std::forward<Args>(args)...);
+    }
+
+    internal::state_out<const digraph>
+    out(state src) const
+    {
+      return {this, this->states_[src].succ};
+    }
+
+    internal::state_out<digraph>
+    out(state src)
+    {
+      return {this, this->states_[src].succ};
+    }
+
+    internal::states_out<digraph>
+    states_out(const edge_storage_t& e)
+    {
+      return {this, e.dst};
+    }
+
+    internal::states_out<digraph>
+    states_out(hyper_edge hyper)
+    {
+      return {this, hyper};
     }
   };
 }

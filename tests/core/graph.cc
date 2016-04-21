@@ -1,5 +1,5 @@
 // -*- coding: utf-8 -*-
-// Copyright (C) 2014, 2015 Laboratoire de Recherche et Développement
+// Copyright (C) 2014, 2015, 2016 Laboratoire de Recherche et Développement
 // de l'Epita.
 //
 // This file is part of Spot, a model checking library.
@@ -228,27 +228,24 @@ f6()
   return f == 3 && (h > 2.49 && h < 2.51);
 }
 
+
+#include <fstream>
 static bool
 f7()
 {
   spot::digraph<int, int, true> g(3);
-  auto s1 = g.new_state(2);
-  auto s2 = g.new_state(3);
-  auto s3 = g.new_state(4);
-  g.new_edge(s1, {s2, s3}, 1);
-  g.new_edge(s1, {s3}, 2);
-  g.new_edge(s2, {s3}, 3);
-  g.new_edge(s3, {s2}, 4);
+  auto s1 = g.new_state(1);
+  auto s2 = g.new_state(2);
+  auto s3 = g.new_state(3);
+  g.new_edge(s1, {s1, s2, s3}, 1);
+  g.new_edge(s2, {s3}, 2);
+  g.new_edge(s3, {s2}, 3);
 
-  int f = 0;
+  unsigned f = 0;
   for (auto& t: g.out(s1))
-    {
-      for (auto& tt: t.dst)
-        {
-          f += t.label * g.state_data(tt);
-        }
-    }
-  return f == 15;
+    for (auto tt: g.states_out(t))
+      f += tt.dst;
+  return f == s1 + s2 + s3;
 }
 
 
