@@ -37,7 +37,8 @@ check_SCRIPTS = run
 # We try to keep this somehow by strength.  Test basic things first,
 # because such failures will be easier to diagnose and fix.
 TESTS = $(TESTS_sanity) $(TESTS_misc) $(TESTS_tl) $(TESTS_graph) \
-  $(TESTS_kripke) $(TESTS_twa) $(TESTS_python) $(TESTS_ltsmin)
+  $(TESTS_kripke) $(TESTS_twa) $(TESTS_python) $(TESTS_ltsmin) \
+  $(TESTS_twalt)
 
 distclean-local:
 	find . -name '*.dir' -type d -print | xargs rm -rf
@@ -93,7 +94,8 @@ check_PROGRAMS = \
   core/tgbagraph \
   core/tostring \
   core/tunabbrev \
-  core/tunenoform
+  core/tunenoform \
+  core/twalt
 
 # Keep this sorted alphabetically.
 core_acc_SOURCES = core/acc.cc
@@ -137,6 +139,7 @@ core_safra_SOURCES = core/safra.cc
 core_syntimpl_SOURCES = core/syntimpl.cc
 core_tostring_SOURCES = core/tostring.cc
 core_trival_SOURCES = core/trival.cc
+core_twalt_SOURCES = core/twalt.cc
 core_tunabbrev_SOURCES = core/equalsf.cc
 core_tunabbrev_CPPFLAGS = $(AM_CPPFLAGS) -DUNABBREV='"^ieFG"'
 core_tunenoform_SOURCES = core/equalsf.cc
@@ -280,6 +283,9 @@ TESTS_twa = \
   core/randpsl.test \
   core/cycles.test \
   core/acc_word.test
+
+TESTS_twalt = \
+  core/twalt.test
 
 
 ############################## PYTHON ##############################

@@ -34,6 +34,7 @@ twa_HEADERS = \
   taatgba.hh \
   twa.hh \
   twagraph.hh \
+  twalt.hh \
   twaproduct.hh
 
 noinst_LTLIBRARIES = libtwa.la
