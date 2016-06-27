@@ -20,6 +20,7 @@
 #pragma once
 #include <spot/graph/graph.hh>
 #include <spot/twa/twagraph.hh>
+#include <spot/twa/twa.hh>
 #include <spot/tl/formula.hh>
 #include <memory>
 
@@ -32,19 +33,22 @@ namespace spot
     typedef unsigned state_num;
   protected:
     graph_t g_;
-    bdd_dict_ptr dict_;
     unsigned init_number_;
+    bdd_dict_ptr dict_;
+    bdd bddaps_;
+    acc_cond acc_;
+    twa::bprop properties;
 
   public:
     twalt(const bdd_dict_ptr& dict)
       : dict_(dict)
-      {
-      }
+    {
+    }
 
     ~twalt()
-      {
-	dict_->unregister_all_my_variables(this);
-      }
+    {
+      dict_->unregister_all_my_variables(this);
+    }
 
     unsigned num_states() const
     {
@@ -98,6 +102,20 @@ namespace spot
                          cond, acc);
     }
 
+#ifndef SWIG
+    internal::state_out<const graph_t>
+    out(unsigned src) const
+    {
+      return g_.out(src);
+    }
+#endif
+
+    internal::state_out<graph_t>
+    out(unsigned src)
+    {
+      return g_.out(src);
+    }
+
     int register_ap(formula ap)
     {
       int res = dict_->has_registered_proposition(ap, this);
@@ -105,7 +123,7 @@ namespace spot
         {
           //aps_.push_back(ap);
           res = dict_->register_proposition(ap, this);
-          //bddaps_ &= bdd_ithvar(res);
+          bddaps_ &= bdd_ithvar(res);
         }
       return res;
     }
@@ -113,6 +131,26 @@ namespace spot
     int register_ap(std::string ap)
     {
       return register_ap(formula::ap(ap));
+    }
+
+    bdd ap_vars() const
+    {
+      return bddaps_;
+    }
+
+    unsigned num_sets() const
+    {
+      return acc_.num_sets();
+    }
+
+    trival prop_deterministic() const
+    {
+      return properties.deterministic;
+    }
+
+    trival prop_state_acc() const
+    {
+      return properties.state_based_acc;
     }
   };
 

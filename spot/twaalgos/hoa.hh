@@ -1,5 +1,5 @@
 // -*- coding: utf-8 -*-
-// Copyright (C) 2014, 2015 Laboratoire de Recherche et Développement
+// Copyright (C) 2014, 2015, 2016 Laboratoire de Recherche et Développement
 // de l'Epita (LRDE).
 //
 // This file is part of Spot, a model checking library.
@@ -22,6 +22,7 @@
 #include <iosfwd>
 #include <spot/misc/common.hh>
 #include <spot/twa/fwd.hh>
+#include <spot/twa/twalt.hh>
 
 namespace spot
 {
@@ -40,5 +41,10 @@ namespace spot
   SPOT_API std::ostream&
   print_hoa(std::ostream& os,
             const const_twa_ptr& g,
+            const char* opt = nullptr);
+
+  SPOT_API std::ostream&
+  print_hoa(std::ostream& os,
+            const const_twalt_ptr,
             const char* opt = nullptr);
 }

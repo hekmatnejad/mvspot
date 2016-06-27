@@ -47,8 +47,8 @@ int main()
   aut->register_ap(mdr);
   aut->register_ap(mdr2);
 
-  bdd p1;// = bdd_ithvar(aut->register_ap("p1"));
-  bdd p2;// = bdd_ithvar(aut->register_ap("p2"));
+  bdd p1; // = bdd_ithvar(aut->register_ap("p1"));
+  bdd p2; // = bdd_ithvar(aut->register_ap("p2"));
 
   s << "bdds created" << std::endl;
 
@@ -58,6 +58,7 @@ int main()
 
   s << "edges created" << std::endl;
 
-  //print_hoa(aut);
+  std::ofstream out("lol.debug");
+  //print_hoa(out, aut);
   return 0;
 }

@@ -70,6 +70,14 @@ namespace spot
         number_all_ap(aut);
       }
 
+      metadata(const const_twalt_ptr& aut, bool implicit, bool state_labels)
+      {
+        check_det_and_comp(aut);
+        use_implicit_labels = implicit && is_deterministic && is_complete;
+        use_state_labels &= state_labels;
+        number_all_ap(aut);
+      }
+
       std::ostream&
       emit_acc(std::ostream& os, acc_cond::mark_t b)
       {
@@ -88,6 +96,81 @@ namespace spot
           }
         os << '}';
         return os;
+      }
+
+      void check_det_and_comp(const const_twalt_ptr& aut)
+      {
+        // try factoring with the same function on twa_graph
+        std::string empty;
+
+        unsigned ns = aut->num_states();
+        bool deterministic = true;
+        bool complete = true;
+        bool state_acc = true;
+        bool nodeadend = true;
+        bool colored = aut->num_sets() >= 1;
+        for (unsigned src = 0; src < ns; ++src)
+          {
+            bdd sum = bddfalse;
+            bdd available = bddtrue;
+            bool st_acc = true;
+            bool notfirst = false;
+            acc_cond::mark_t prev = 0U;
+            bool has_succ = false;
+            bdd lastcond = bddfalse;
+            for (auto& t: aut->out(src))
+              {
+                if (has_succ)
+                  use_state_labels &= lastcond == t.cond;
+                else
+                  lastcond = t.cond;
+                if (complete)
+                  sum |= t.cond;
+                if (deterministic)
+                  {
+                    if (!bdd_implies(t.cond, available))
+                      deterministic = false;
+                    else
+                      available -= t.cond;
+                  }
+                sup.insert(std::make_pair(t.cond, empty));
+                if (st_acc)
+                  {
+                    if (notfirst && prev != t.acc)
+                      {
+                        st_acc = false;
+                      }
+                    else
+                      {
+                        notfirst = true;
+                        prev = t.acc;
+                      }
+                  }
+                if (colored)
+                  {
+                    auto a = t.acc;
+                    if (!a || a.remove_some(1))
+                      colored = false;
+                  }
+                has_succ = true;
+              }
+            nodeadend &= has_succ;
+            if (complete)
+              complete &= sum == bddtrue;
+            common_acc.push_back(st_acc);
+            state_acc &= st_acc;
+          }
+        is_deterministic = deterministic;
+        is_complete = complete;
+        has_state_acc = state_acc;
+        // If the automaton has state-based acceptance and contain
+        // some states without successors do not declare it as
+        // colored.
+        is_colored = colored && (!has_state_acc || nodeadend);
+        // If the automaton declares that it is deterministic or
+        // state-based, make sure that it really is.
+        assert(deterministic || aut->prop_deterministic() != true);
+        assert(state_acc || aut->prop_state_acc() != true);
       }
 
       void check_det_and_comp(const const_twa_graph_ptr& aut)
@@ -166,6 +249,16 @@ namespace spot
 
       void number_all_ap(const const_twa_graph_ptr& aut)
       {
+        number_all_ap(aut->ap_vars());
+      }
+
+      void number_all_ap(const const_twalt_ptr& aut)
+      {
+        number_all_ap(aut->ap_vars());
+      }
+
+      void number_all_ap(const bdd& bddaps)
+      {
         // Make sure that the automaton uses only atomic propositions
         // that have been registered via twa::register_ap() or some
         // variant.  If that is not the case, it is a bug that should
@@ -175,7 +268,7 @@ namespace spot
         bdd all = bddtrue;
         for (auto& i: sup)
           all &= bdd_support(i.first);
-        all_ap = aut->ap_vars();
+        all_ap = bddaps;
         if (bdd_exist(all, all_ap) != bddtrue)
           throw std::runtime_error("print_hoa(): automaton uses "
                                    "unregistered atomic propositions");
@@ -252,10 +345,7 @@ namespace spot
       Hoa_Acceptance_Mixed    /// mix state-based and transition-based
     };
 
-  static std::ostream&
-  print_hoa(std::ostream& os,
-                const const_twa_graph_ptr& aut,
-                const char* opt)
+  struct display_options
   {
     bool newline = true;
     hoa_acceptance acceptance = Hoa_Acceptance_States;
@@ -264,7 +354,12 @@ namespace spot
     bool state_labels = false;
     bool v1_1 = false;
 
-    if (opt)
+    display_options(const char* opt)
+      : newline(true), acceptance(Hoa_Acceptance_States),
+        implicit_labels(false), verbose(false), state_labels(false),
+        v1_1(false)
+    {
+      if (opt)
       while (*opt)
         {
           switch (char c = *opt++)
@@ -311,20 +406,29 @@ namespace spot
                 (std::string("unknown option for print_hoa(): ") + c);
             }
         }
+    }
+  };
+
+  static std::ostream&
+  print_hoa(std::ostream& os,
+                const const_twa_graph_ptr& aut,
+                const char* opt)
+  {
+    display_options options(opt);
 
     // Calling get_init_state_number() may add a state to empty
     // automata, so it has to be done first.
     unsigned init = aut->get_init_state_number();
 
-    metadata md(aut, implicit_labels, state_labels);
+    metadata md(aut, options.implicit_labels, options.state_labels);
 
-    if (acceptance == Hoa_Acceptance_States && !md.has_state_acc)
-      acceptance = Hoa_Acceptance_Transitions;
+    if (options.acceptance == Hoa_Acceptance_States && !md.has_state_acc)
+      options.acceptance = Hoa_Acceptance_Transitions;
 
     unsigned num_states = aut->num_states();
 
-    const char nl = newline ? '\n' : ' ';
-    os << (v1_1 ? "HOA: v1.1" : "HOA: v1") << nl;
+    const char nl = options.newline ? '\n' : ' ';
+    os << (options.v1_1 ? "HOA: v1.1" : "HOA: v1") << nl;
     auto n = aut->get_named_prop<std::string>("automaton-name");
     if (n)
       escape_str(os << "name: \"", *n) << '"' << nl;
@@ -417,7 +521,7 @@ namespace spot
     unsigned prop_len = 60;
     auto prop = [&](const char* str)
       {
-        if (newline)
+        if (options.newline)
           {
             auto l = strlen(str);
             if (prop_len < l)
@@ -434,62 +538,64 @@ namespace spot
     // properties.  The "univ-branch" properties seems more important
     // to announce that the automaton might not be parsable by tools
     // that do not support alternating automata.
-    if (verbose)
+    if (options.verbose)
       prop(" no-univ-branch");
-    implicit_labels = md.use_implicit_labels;
-    state_labels = md.use_state_labels;
-    if (implicit_labels)
+    options.implicit_labels = md.use_implicit_labels;
+    options.state_labels = md.use_state_labels;
+    if (options.implicit_labels)
       prop(" implicit-labels");
-    else if (state_labels)
+    else if (options.state_labels)
       prop(" state-labels explicit-labels");
     else
       prop(" trans-labels explicit-labels");
-    if (acceptance == Hoa_Acceptance_States)
+    if (options.acceptance == Hoa_Acceptance_States)
       prop(" state-acc");
-    else if (acceptance == Hoa_Acceptance_Transitions)
+    else if (options.acceptance == Hoa_Acceptance_Transitions)
       prop(" trans-acc");
     if (md.is_colored)
       prop(" colored");
-    else if (verbose && v1_1)
+    else if (options.verbose && options.v1_1)
       prop(" !colored");
     if (md.is_complete)
       prop(" complete");
-    else if (v1_1)
+    else if (options.v1_1)
       prop(" !complete");
     if (md.is_deterministic)
       prop(" deterministic");
-    else if (v1_1)
+    else if (options.v1_1)
       prop(" !deterministic");
     // Deterministic automata are also unambiguous, so writing both
     // properties seems redundant.  People working on unambiguous
     // automata are usually concerned about non-deterministic
     // unambiguous automata.  So do not mention "unambiguous"
     // in the case of deterministic automata.
-    if (aut->prop_unambiguous() && (verbose || !md.is_deterministic))
+    if (aut->prop_unambiguous() && (options.verbose || !md.is_deterministic))
       prop(" unambiguous");
-    else if (v1_1 && !aut->prop_unambiguous())
+    else if (options.v1_1 && !aut->prop_unambiguous())
       prop(" !unambiguous");
     if (aut->prop_stutter_invariant())
       prop(" stutter-invariant");
     if (!aut->prop_stutter_invariant())
       {
-        if (v1_1)
+        if (options.v1_1)
           prop(" !stutter-invariant");
         else
           prop(" stutter-sensitive");
       }
     if (aut->prop_terminal())
       prop(" terminal");
-    if (aut->prop_weak() && (verbose || aut->prop_terminal() != true))
+    if (aut->prop_weak() && (options.verbose || aut->prop_terminal() != true))
       prop(" weak");
-    if (aut->prop_inherently_weak() && (verbose || aut->prop_weak() != true))
+    if (aut->prop_inherently_weak()
+        && (options.verbose || aut->prop_weak() != true))
       prop(" inherently-weak");
-    if (v1_1 && !aut->prop_terminal() && (verbose || aut->prop_weak() != false))
+    if (options.v1_1 && !aut->prop_terminal()
+        && (options.verbose || aut->prop_weak() != false))
       prop(" !terminal");
-    if (v1_1 && !aut->prop_weak() && (verbose ||
-                                      aut->prop_inherently_weak() != false))
+    if (options.v1_1 && !aut->prop_weak()
+        && (options.verbose || aut->prop_inherently_weak() != false))
       prop(" !weak");
-    if (v1_1 && !aut->prop_inherently_weak())
+    if (options.v1_1 && !aut->prop_inherently_weak())
       prop(" !inherently-weak");
     os << nl;
 
@@ -497,10 +603,10 @@ namespace spot
     // fill a vector with all destinations in order.
     std::vector<unsigned> out;
     std::vector<acc_cond::mark_t> outm;
-    if (implicit_labels)
+    if (options.implicit_labels)
       {
         out.resize(1UL << nap);
-        if (acceptance != Hoa_Acceptance_States)
+        if (options.acceptance != Hoa_Acceptance_States)
           outm.resize(1UL << nap);
       }
 
@@ -508,13 +614,13 @@ namespace spot
     auto sn = aut->get_named_prop<std::vector<std::string>>("state-names");
     for (unsigned i = 0; i < num_states; ++i)
       {
-        hoa_acceptance this_acc = acceptance;
+        hoa_acceptance this_acc = options.acceptance;
         if (this_acc == Hoa_Acceptance_Mixed)
           this_acc = (md.common_acc[i] ?
                       Hoa_Acceptance_States : Hoa_Acceptance_Transitions);
 
         os << "State: ";
-        if (state_labels)
+        if (options.state_labels)
           {
             bool output = false;
             for (auto& t: aut->out(i))
@@ -541,9 +647,8 @@ namespace spot
           }
         os << nl;
 
-        if (!implicit_labels && !state_labels)
+        if (!options.implicit_labels && !options.state_labels)
           {
-
             for (auto& t: aut->out(i))
               {
                 os << '[' << md.sup[t.cond] << "] " << t.dst;
@@ -552,7 +657,7 @@ namespace spot
                 os << nl;
               }
           }
-        else if (state_labels)
+        else if (options.state_labels)
           {
             unsigned n = 0;
             for (auto& t: aut->out(i))
@@ -647,4 +752,17 @@ namespace spot
     return os;
   }
 
+  std::ostream&
+  print_hoa(std::ostream& os,
+            const const_twalt_ptr aut,
+            const char* opt)
+  {
+    os << "Alternating!\n\n";
+    os << opt << std::endl;
+    display_options options(opt);
+    //unsigned init = aut->get_init_state_number;
+    // args may not be mandatory
+    metadata md(aut, options.implicit_labels, options.state_labels);
+    return os;
+  }
 }

@@ -918,11 +918,8 @@ namespace spot
       return acc_.mark(0);
     }
 
-  private:
-    std::vector<formula> aps_;
-    bdd bddaps_;
-
     /// Helper structure used to store property flags.
+    /// It is public since alternating automata use them
     struct bprop
     {
       trival::repr_t state_based_acc:2;   // State-based acceptance.
@@ -933,6 +930,10 @@ namespace spot
       trival::repr_t unambiguous:2;       // Unambiguous automaton.
       trival::repr_t stutter_invariant:2; // Stutter invariant language.
     };
+  private:
+    std::vector<formula> aps_;
+    bdd bddaps_;
+
     union
     {
       unsigned props;
