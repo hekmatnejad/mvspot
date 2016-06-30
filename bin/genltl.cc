@@ -130,6 +130,7 @@
 #include <spot/tl/formula.hh>
 #include <spot/tl/relabel.hh>
 #include <spot/tl/parse.hh>
+#include <spot/tl/exclusive.hh>
 
 using namespace spot;
 
@@ -148,6 +149,9 @@ enum {
   OPT_GH_Q,
   OPT_GH_R,
   OPT_GO_THETA,
+  OPT_KR_PHI1,
+  OPT_KR_PHI2,
+  OPT_KR_PHI3,
   OPT_OR_FG,
   OPT_OR_G,
   OPT_OR_GF,
@@ -224,6 +228,9 @@ static const argp_option options[] =
       "(GF(p1)|FG(p2))&(GF(p2)|FG(p3))&... &(GF(pn)|FG(p{n+1}))", 0},
     { "go-theta", OPT_GO_THETA, "RANGE", 0,
       "!((GF(p1)&GF(p2)&...&GF(pn)) -> G(q->F(r)))", 0 },
+    { "kr-phi1", OPT_KR_PHI1, "RANGE", 0, "KR family 1", 0 },
+    { "kr-phi2", OPT_KR_PHI2, "RANGE", 0, "KR family 2", 0 },
+    { "kr-phi3", OPT_KR_PHI3, "RANGE", 0, "KR family 3", 0 },
     { "or-fg", OPT_OR_FG, "RANGE", 0, "FG(p1)|FG(p2)|...|FG(pn)", 0 },
     OPT_ALIAS(ccj-xi),
     { "or-g", OPT_OR_G, "RANGE", 0, "G(p1)|G(p2)|...|G(pn)", 0 },
@@ -315,6 +322,9 @@ parse_opt(int key, char* arg, struct argp_state*)
     case OPT_GH_Q:
     case OPT_GH_R:
     case OPT_GO_THETA:
+    case OPT_KR_PHI1:
+    case OPT_KR_PHI2:
+    case OPT_KR_PHI3:
     case OPT_OR_FG:
     case OPT_OR_G:
     case OPT_OR_GF:
@@ -638,6 +648,217 @@ X_n(formula p, int n)
   while (n--)
     res = X_(res);
   return res;
+}
+
+// used by blow_up
+static formula
+opti(formula a, formula d, int i)
+{
+  formula xa_i = X_n(a, i);
+  formula result = G_(Implies_(d, xa_i));
+  result = And_(xa_i, result);
+  return result;
+}
+
+// all the 3 following families come from:
+// http://www.cs.huji.ac.il/~ornak/publications/mochart10.pdf
+static formula
+KR_phi1(int n)
+{
+  if (n <= 0)
+    return formula::tt();
+
+  formula a = formula::ap("a");
+  formula b = formula::ap("b");
+  formula c = formula::ap("#");
+  formula d = formula::ap("$");
+
+  // preserve mutual exclusion between AP
+  exclusive_ap mutex;
+  mutex.add_group({a, b, c, d});
+
+  static const formula a_or_b = Or_(a, b);
+
+  // XG#
+  formula l_result = X_(G_(c));
+
+  for (int i = 1; i <=n; ++i)
+    l_result = X_(And_(a_or_b, l_result));
+  l_result = And_(d, l_result);
+  l_result = U_(Not_(d), l_result);
+
+  formula r_result;
+
+  r_result = And_(c, r_result);
+
+  for (int i = 1; i <= n; ++i)
+    {
+      r_result = And_(r_result, Or_(opti(a, d, i), opti(b, d, i)));
+    }
+
+  // X^n+1(#)
+  r_result = And_(r_result, X_n(c, n + 1));
+
+  return mutex.constrain(And_(l_result, F_(r_result)));
+}
+
+// we dont need n as we have k=log2n
+static formula
+phi(int i, const int& k)
+{
+  // phi(n, i) is the k bit encoding of i - 1
+  --i;
+  formula f = formula::tt();
+  for (int j = 0; j < k; ++j, i /= 2)
+    f = And_(formula::ap((i & 0x1) ? "1" : "0"), X_(f));
+  return f;
+}
+
+// verify me
+#define KR2(a) And_(a, F_(And_(d, F_(And_(phi(i, log2n), X_n(a, log2n))))))
+
+static formula
+KR_phi2(int n)
+{
+  if (n <= 0)
+    return formula::tt();
+  
+  formula a = formula::ap("a");
+  formula b = formula::ap("b");
+  formula c = formula::ap("#");
+  formula d = formula::ap("$");
+
+  // used in phi but essential for mutual exclusion
+  formula z = formula::ap("0");
+  formula o = formula::ap("1");
+  
+  // preserve mutual exclusion between AP
+  exclusive_ap mutex;
+  mutex.add_group({a, b, c, d, z, o});
+
+  // k
+  int log2n = 1;
+  for (int i = n; i > 2; ++log2n, i /= 2);;
+
+  formula r1 = And_(c, X_(phi(1, log2n)));
+
+  formula r2 = formula::tt();
+  for (int i = 1; i <= n - 1; ++i)
+    {
+      formula f = X_(phi(i + 1, log2n));
+      f = And_(Or_(a, b), f);
+      f = X_(f);
+      f = Implies_(phi(i, log2n), f);
+      r2 = And_(r2, f);
+    }
+  r2 = G_(r2);
+
+  formula r3 = G_(c);
+  r3 = Or_(d, r3);
+  r3 = Or_(phi(1, log2n), r3);
+  r3 = And_(c, X_(r3));
+  r3 = And_(Or_(a, b), X_(r3));
+  r3 = X_(r3);
+  r3 = G_(Implies_(phi(n, log2n), r3));
+
+  formula r4 = X_n(G_(c), n * (log2n + 1));
+  r4 = And_(d, r4);
+  r4 = U_(Not_(d), r4);
+
+  formula r5 = formula::tt();
+  for (int i = 1; i <= n; ++i)
+    {
+      formula f = Or_(KR2(a), KR2(b));
+      f = Implies_(phi(i, log2n), X_n(f, log2n));
+      r5 = And_(r5, f);
+    }
+  r5 = F_(And_(c, U_(r5, c)));
+
+  return mutex.constrain(And_(r1, And_(r2, And_(r3, And_(r4, r5)))));
+}
+
+#define KR3(a) And_(a, F_(And_(d, F_(a))))
+
+static formula
+KR_phi3(int n)
+{
+  if (n <= 0)
+    return formula::tt();
+
+  std::string a_string = "a";
+  std::string b_string = "b";
+
+  formula a = formula::ap("a1");
+  formula b = formula::ap("b1");
+  formula c = formula::ap("#");
+  formula d = formula::ap("$");
+
+  formula r1 = And_(c, X_(Or_(a, Or_(b, d))));
+
+  formula ai = a;
+  formula bi = b;
+  // a_{i+1}
+  formula aip;
+  // b_{i+1}
+  formula bip;
+  std::ostringstream oss;
+
+  formula r2 = formula::tt();
+  formula r5 = formula::tt();
+  formula mutex1 = formula::ff();
+  formula mutex3 = formula::tt();
+  for (int i = 1; i <= n;)
+    {
+      // we increment now to get "a_{i+1}" and "b_{i+1}" easily
+      ++i;
+      oss << a_string << i;
+      aip = formula::ap(oss.str());
+      oss.str("");
+      oss << b_string << i;
+      bip = formula::ap(oss.str());
+      oss.str("");
+
+      // this loop is for i to n - 1
+      if (i < n)
+	r2 = And_(r2, Implies_(Or_(ai, bi), X_(Or_(aip, bip))));
+
+      r5 = And_(r5, Or_(KR3(ai), KR3(bi)));
+
+      mutex1 = Or_(mutex1, Or_(ai, bi));
+
+      mutex3 = And_(mutex3, Implies_(ai, Not_(bi)));
+
+      ai = aip;
+      bi = bip;
+    }
+  r2 = G_(r2);
+
+  oss << a_string << n;
+  formula an = formula::ap(oss.str());
+  oss.str("");
+  oss << b_string << n;
+  formula bn = formula::ap(oss.str());
+  oss.str("");
+  formula r3 = Or_(a, Or_(b, Or_(d, G_(c))));
+  r3 = X_(And_(c, X_(r3)));
+  r3 = G_(Implies_(Or_(an, bn), r3));
+
+  formula r4 = X_n(G_(c), n);
+  r4 = And_(Or_(a, b), r4);
+  r4 = And_(d, X_(r4));
+  r4 = U_(Not_(d), r4);
+
+  r5 = X_(U_(r5, c));
+  r5 = F_(And_(c, r5));
+
+  mutex1 = G_(Implies_(Or_(c, d), Not_(mutex1)));
+
+  formula mutex2 = G_(Implies_(c, Not_(d)));
+
+  mutex3 = G_(mutex3);
+
+  return And_(And_(r1, And_(r2, And_(r3, And_(r4, r5)))),
+	      And_(mutex1, And_(mutex2, mutex3)));
 }
 
 // Based on LTLcounter.pl from Kristin Rozier.
@@ -996,6 +1217,15 @@ output_pattern(int pattern, int n)
       break;
     case OPT_GO_THETA:
       f = fair_response("p", "q", "r", n);
+      break;
+    case OPT_KR_PHI1:
+      f = KR_phi1(n);
+      break;
+    case OPT_KR_PHI2:
+      f = KR_phi2(n);
+      break;
+    case OPT_KR_PHI3:
+      f = KR_phi3(n);
       break;
     case OPT_OR_FG:
       f = FG_n("p", n, false);
