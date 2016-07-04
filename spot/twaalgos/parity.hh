@@ -117,4 +117,15 @@ namespace spot
   SPOT_API twa_graph_ptr
   parity_product(const const_twa_graph_ptr& left,
                  const const_twa_graph_ptr& right);
+
+  /// \brief Construct a sum keeping the parity of two parity automata
+  ///
+  /// \param left the first automaton
+  ///
+  /// \param right the second automaton
+  ///
+  /// \result the sum which is a parity automaton
+  SPOT_API twa_graph_ptr
+  parity_product_or(const const_twa_graph_ptr& left,
+                    const const_twa_graph_ptr& right);
 }
