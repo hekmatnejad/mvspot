@@ -389,18 +389,18 @@ namespace spot
         return 0;
       }
 
-      state_history make_succ(value_t left_acc_set, value_t right_acc_set) const
+      state_history make_succ(value_t left_acc_set,
+                              value_t right_acc_set) const
       {
-        auto mat = state_history(*this);
-        mat.clean_here();
+        auto mat = state_history(left_num_sets_, right_num_sets_);
         for (unsigned i = 0; i < right_num_sets_; ++i)
           {
-            auto old = mat.get_left(i);
+            auto old = get_left(i);
             mat.set_left(i, std::max(left_acc_set, old));
           }
         for (unsigned i = 0; i < left_num_sets_; ++i)
           {
-            auto old = mat.get_right(i);
+            auto old = get_right(i);
             mat.set_right(i, std::max(right_acc_set, old));
           }
         return mat;
@@ -489,6 +489,7 @@ namespace spot
         state_history new_sh = l2sh_[label]->first;
         auto succ = new_sh.make_succ(left_acc_set, right_acc_set);
         auto max_acc_set = succ.get_max_acc_set();
+        succ.clean_here();
         return std::make_pair(push_state_history(succ), max_acc_set);
       }
 
@@ -501,7 +502,8 @@ namespace spot
         if (p.second)
           {
             p.first->second =
-              push_state_history(current_sh, left_acc_set, right_acc_set);
+              push_state_history(current_sh, left_acc_set,
+                                 right_acc_set);
           }
         return p.first->second;
       }
