@@ -24,6 +24,7 @@
 #include <vector>
 #include <stdexcept>
 #include <iosfwd>
+#include <initializer_list>
 
 namespace spot
 {
@@ -85,6 +86,17 @@ namespace spot
 
     void start();
     std::ostream& operator()();
+
+    /// \brief Add many vars to the current clause and end it or not
+    void add(std::initializer_list<int> values, bool end);
+    /// \brief Add a var to the current clause and end it or not
+    void add(int v, bool end);
+    /// \breif End the current clause
+    void end_clause();
+    /// \breif Add an empty line to the cnf_file
+    void add_empty_line();
+    /// \breif Update cnf_file's header with the right numbers
+    void update_header(int vars, int clauses);
 
     typedef std::vector<int> solution;
     typedef std::pair<int, solution> solution_pair;
