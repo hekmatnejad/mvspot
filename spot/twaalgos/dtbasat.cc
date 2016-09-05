@@ -294,7 +294,7 @@ namespace spot
     typedef std::pair<int, int> sat_stats;
 
     static
-    sat_stats dtba_to_sat(std::ostream& out,
+    sat_stats dtba_to_sat(satsolver solver,
                           const const_twa_graph_ptr& ref,
                           dict& d, bool state_based)
     {
@@ -325,12 +325,12 @@ namespace spot
       // empty automaton is impossible
       if (d.cand_size == 0)
         {
-          out << "p cnf 1 2\n-1 0\n1 0\n";
+          solver() << "p cnf 1 2\n-1 0\n1 0\n";
           return std::make_pair(1, 2);
         }
 
       // An empty line for the header
-      out << "                                                 \n";
+      solver.add_empty_line();
 
 #if DEBUG
       debug_dict = ref->get_dict();
@@ -351,7 +351,7 @@ namespace spot
                 transition t(i, s, k);
                 int ti = d.transid[t];
                 dout << "¬" << t << '\n';
-                out << -ti << " 0\n";
+                solver.add(-ti, true);
                 ++nclauses;
               }
            ++j;
@@ -373,21 +373,20 @@ namespace spot
               for (unsigned q2 = 0; q2 < d.cand_size; q2++)
                 {
                   transition t(q1, s, q2);
-                  out << t << "δ";
+                  solver() << t << "δ";
                   if (q2 != d.cand_size)
-                    out << " ∨ ";
+                    solver() << " ∨ ";
                 }
-              out << '\n';
+              solver() << '\n';
 #endif
 
               for (unsigned q2 = 0; q2 < d.cand_size; q2++)
                 {
                   transition t(q1, s, q2);
                   int ti = d.transid[t];
-
-                  out << ti << ' ';
+                  solver.add(ti, false);
                 }
-              out << "0\n";
+              solver.end_clause();
 
               ++nclauses;
             }
@@ -397,7 +396,7 @@ namespace spot
       {
         unsigned init = ref->get_init_state_number();
         dout << state_pair(0, init) << '\n';
-        out << d.prodid[state_pair(0, init)] << " 0\n";
+        solver.add(d.prodid[state_pair(0, init)], true);
         ++nclauses;
       }
 
@@ -430,8 +429,7 @@ namespace spot
                         continue;
 
                       dout << pit->first << " ∧ " << t << "δ → " << p2 << '\n';
-                      out << -pit->second << ' ' << -ti << ' '
-                          << succ << " 0\n";
+                      solver.add({-pit->second, -ti, succ}, true);
                       ++nclauses;
                     }
                 }
@@ -497,8 +495,7 @@ namespace spot
 
                                     dout << p1 << "R ∧ " << t << "δ → ¬" << t
                                          << "F\n";
-                                    out << -pid1 << ' ' << -ti << ' '
-                                        << -ta << " 0\n";
+                                    solver.add({-pid1, -ti, -ta}, true);
                                     ++nclauses;
                                   }
 
@@ -523,8 +520,7 @@ namespace spot
 
                                     dout << p1 << "R ∧ " << t << "δ → " << p2
                                          << "R\n";
-                                    out << -pid1 << ' ' << -ti << ' '
-                                        << pid2 << " 0\n";
+                                    solver.add({-pid1, -ti, pid2}, true);
                                     ++nclauses;
                                   }
                               }
@@ -590,8 +586,7 @@ namespace spot
 
                                     dout << p1 << "C ∧ " << t << "δ → " << t
                                          << "F\n";
-                                    out << -pid1 << ' ' << -ti << ' ' << ta
-                                        << " 0\n";
+                                    solver.add({-pid1, -ti, ta}, true);
                                     ++nclauses;
                                   }
                               }
@@ -616,8 +611,7 @@ namespace spot
                                     dout << p1 << "C ∧ " << t << "δ ∧ ¬"
                                          << t << "F → " << p2 << "C\n";
 
-                                    out << -pid1 << ' ' << -ti << ' '
-                                        << ta << ' ' << pid2 << " 0\n";
+                                    solver.add({-pid1, -ti, ta, pid2}, true);
                                     ++nclauses;
                                   }
                               }
@@ -626,8 +620,7 @@ namespace spot
                   }
             }
         }
-      out.seekp(0);
-      out << "p cnf " << d.nvars << ' ' << nclauses.nb_clauses();
+      solver.update_header(d.nvars, nclauses.nb_clauses());
       return std::make_pair(d.nvars, nclauses.nb_clauses());
     }
 
@@ -757,7 +750,7 @@ namespace spot
 
     timer_map t;
     t.start("encode");
-    sat_stats s = dtba_to_sat(solver(), a, d, state_based);
+    sat_stats s = dtba_to_sat(solver, a, d, state_based);
     t.stop("encode");
     t.start("solve");
     solution = solver.get_solution();
