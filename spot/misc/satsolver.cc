@@ -135,6 +135,37 @@ namespace spot
     cnf_stream_->exceptions(std::ofstream::failbit | std::ofstream::badbit);
   }
 
+  void satsolver::end_clause()
+  {
+    *cnf_stream_ << "0\n";
+  }
+
+  void satsolver::add(std::initializer_list<int> values, bool end)
+  {
+    for (auto& v : values)
+      *cnf_stream_ << std::to_string(v) << ' ';
+    if (end)
+      end_clause();
+  }
+
+  void satsolver::add(int v, bool end)
+  {
+    *cnf_stream_ << std::to_string(v) << ' ';
+    if (end)
+      end_clause();
+  }
+
+  void satsolver::add_empty_line()
+  {
+    *cnf_stream_ << "                                                 \n";
+  }
+
+  void satsolver::update_header(int vars, int clauses)
+  {
+    cnf_stream_->seekp(0);
+    *cnf_stream_ << "p cnf " << vars << ' ' << clauses;
+  }
+
   satsolver::~satsolver()
   {
     delete cnf_tmp_;
