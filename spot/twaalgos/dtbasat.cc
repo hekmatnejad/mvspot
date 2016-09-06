@@ -43,8 +43,10 @@
 #define DEBUG 0
 #if DEBUG
 #define dout out << "c "
+#define dcnf
 #define trace std::cerr
 #else
+#define dcnf while (0)
 #define dout while (0) std::cout
 #define trace dout
 #endif
@@ -323,7 +325,7 @@ namespace spot
       // empty automaton is impossible
       if (d.cand_size == 0)
         {
-          solver() << "p cnf 1 2\n-1 0\n1 0\n";
+          solver() << "p cnf 1 2\n-1 0\n1 0\n"; //FIXME
           return std::make_pair(1, 2);
         }
 
@@ -332,11 +334,11 @@ namespace spot
 
 #if DEBUG
       debug_dict = ref->get_dict();
-      dout << "ref_size: " << ref_size << '\n';
-      dout << "cand_size: " << d.cand_size << '\n';
+      solver.comment("ref_size", ref_size, '\n');
+      solver.comment("cand_size", d.cand_size, '\n');
 #endif
 
-      dout << "symmetry-breaking clauses\n";
+      dcnf solver.comment("symmetry-breaking clauses\n");
       unsigned j = 0;
       bdd all = bddtrue;
       while (all != bddfalse)
@@ -348,15 +350,15 @@ namespace spot
               {
                 transition t(i, s, k);
                 int ti = d.transid[t];
-                dout << "¬" << t << '\n';
+                dcnf solver.comment("¬", t, '\n');
                 solver.add(-ti, true);
               }
            ++j;
          }
       if (!solver.get_nb_clauses())
-         dout << "(none)\n";
+         dcnf solver.comment("(none)\n");
 
-      dout << "(1) the candidate automaton is complete\n";
+      dcnf solver.comment("(1) the candidate automaton is complete\n");
       for (unsigned q1 = 0; q1 < d.cand_size; ++q1)
         {
           bdd all = bddtrue;
@@ -366,15 +368,15 @@ namespace spot
               all -= s;
 
 #if DEBUG
-              dout;
+              solver.comment("");
               for (unsigned q2 = 0; q2 < d.cand_size; q2++)
                 {
                   transition t(q1, s, q2);
-                  solver() << t << "δ";
+                  solver.comment_rec(t, "δ");
                   if (q2 != d.cand_size)
-                    solver() << " ∨ ";
+                    solver.comment_rec(" ∨ ");
                 }
-              solver() << '\n';
+              solver.comment_rec('\n');
 #endif
 
               for (unsigned q2 = 0; q2 < d.cand_size; q2++)
@@ -387,10 +389,10 @@ namespace spot
             }
         }
 
-      dout << "(2) the initial state is reachable\n";
+      dcnf solver.comment("(2) the initial state is reachable\n");
       {
         unsigned init = ref->get_init_state_number();
-        dout << state_pair(0, init) << '\n';
+        dcnf solver.comment(state_pair(0, init), '\n');
         solver.add(d.prodid[state_pair(0, init)], true);
       }
 
@@ -400,8 +402,8 @@ namespace spot
           unsigned q1 = pit->first.a;
           unsigned q1p = pit->first.b;
 
-          dout << "(3) augmenting paths based on Cand[" << q1
-               << "] and Ref[" << q1p << "]\n";
+          dcnf solver.comment("(3) augmenting paths based on Cand[", q1,
+              "] and Ref[", q1p, "]\n");
           for (auto& tr: ref->out(q1p))
             {
               unsigned dp = tr.dst;
@@ -422,7 +424,7 @@ namespace spot
                       if (pit->second == succ)
                         continue;
 
-                      dout << pit->first << " ∧ " << t << "δ → " << p2 << '\n';
+                      dcnf solver.comment(pit->first, " ∧ ", t, "δ → ", p2, '\n');
                       solver.add({-pit->second, -ti, succ}, true);
                     }
                 }
@@ -454,8 +456,8 @@ namespace spot
                   {
                     path p1(q1, q1p, q2, q2p);
 
-                    dout << "(4&5) matching paths from reference based on "
-                         << p1 << '\n';
+                    dcnf solver.comment("(4&5) matching paths from\
+                        reference based on", p1, '\n');
 
                     int pid1;
                     if (q1 == q2 && q1p == q2p)
@@ -486,8 +488,8 @@ namespace spot
                                     int ti = d.transid[t];
                                     int ta = d.transacc[t];
 
-                                    dout << p1 << "R ∧ " << t << "δ → ¬" << t
-                                         << "F\n";
+                                    dcnf solver.comment(p1, "R ∧ ", t, "δ → ¬",
+                                        t, "F\n");
                                     solver.add({-pid1, -ti, -ta}, true);
                                   }
 
@@ -510,8 +512,8 @@ namespace spot
                                     transition t(q2, s, q3);
                                     int ti = d.transid[t];
 
-                                    dout << p1 << "R ∧ " << t << "δ → " << p2
-                                         << "R\n";
+                                    dcnf solver.comment(p1, "R ∧ ", t, "δ → ",
+                                        p2, "R\n");
                                     solver.add({-pid1, -ti, pid2}, true);
                                   }
                               }
@@ -542,8 +544,8 @@ namespace spot
                 for (unsigned q2 = 0; q2 < d.cand_size; ++q2)
                   {
                     path p1(q1, q1p, q2, q2p);
-                    dout << "(6&7) matching paths from candidate based on "
-                         << p1 << '\n';
+                    dcnf solver.comment("(6&7) matching paths from candidate\
+                        based on", p1, '\n');
 
                     int pid1;
                     if (q1 == q2 && q1p == q2p)
@@ -575,8 +577,8 @@ namespace spot
                                     int ti = d.transid[t];
                                     int ta = d.transacc[t];
 
-                                    dout << p1 << "C ∧ " << t << "δ → " << t
-                                         << "F\n";
+                                    dcnf solver.comment(p1, "C ∧ ", t, "δ → ",
+                                        t, "F\n");
                                     solver.add({-pid1, -ti, ta}, true);
                                   }
                               }
@@ -598,9 +600,8 @@ namespace spot
                                     int ti = d.transid[t];
                                     int ta = d.transacc[t];
 
-                                    dout << p1 << "C ∧ " << t << "δ ∧ ¬"
-                                         << t << "F → " << p2 << "C\n";
-
+                                    dcnf solver.comment(p1, "C ∧ ", t, "δ ∧ ¬", t,
+                                        "F → ", p2, "C\n");
                                     solver.add({-pid1, -ti, ta, pid2}, true);
                                   }
                               }

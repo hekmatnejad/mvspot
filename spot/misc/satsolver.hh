@@ -100,9 +100,40 @@ namespace spot
     /// \breif Update cnf_file's header with the right numbers
     void update_header(int vars);
 
+    /// \breif Add comment in the cnf_file -- Variadic Template
+    template<typename T>
+    void comment_rec(T single)
+    {
+      *cnf_stream_ << single << ' ';
+    }
+
+    /// \breif Add comment in the cnf_file -- Variadic Template
+    template<typename T, typename... Args>
+    void comment_rec(T first, Args... args)
+    {
+      *cnf_stream_ << first << ' ';
+      comment_rec(args...);
+    }
+
+    /// \breif Add comment in the cnf_file, starting with 'c' -- Variadic Templ
+    template<typename T>
+    void comment(T single)
+    {
+      *cnf_stream_ << "c " << single << ' ';
+    }
+
+    /// \breif Add comment in the cnf_file, starting with 'c' -- Variadic Templ
+    template<typename T, typename... Args>
+    void comment(T first, Args... args)
+    {
+      *cnf_stream_ << "c " << first << ' ';
+      comment_rec(args...);
+    }
+
     typedef std::vector<int> solution;
     typedef std::pair<int, solution> solution_pair;
     solution_pair get_solution();
+
   private:
     temporary_file* cnf_tmp_;
     std::ostream* cnf_stream_;
