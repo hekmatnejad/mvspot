@@ -50,11 +50,11 @@
 
 #define DEBUG 0
 #if DEBUG
-#define dcnf
 #define dout out << "c "
+#define cnf_comment(...)  solver.comment(__VA_ARGS__)
 #define trace std::cerr
 #else
-#define dcnf while (0)
+#define cnf_comment(...) while (0) solver.comment(__VA_ARGS__)
 #define dout while (0) std::cout
 #define trace dout
 #endif
@@ -64,7 +64,9 @@ namespace spot
   namespace
   {
     static bdd_dict_ptr debug_dict = nullptr;
+//#if DEBUG // This is unused in non-debug mode, this is to fix the warning
     static const acc_cond* debug_ref_acc = nullptr;
+//#endif
     static const acc_cond* debug_cand_acc = nullptr;
 
     struct transition
@@ -630,10 +632,7 @@ namespace spot
 
       // empty automaton is impossible
       if (d.cand_size == 0)
-          return solver.update_header();
-
-      // An empty line for the header
-      solver.add_empty_line();
+          return solver.stats();
 
 #if DEBUG
       debug_ref_acc = &ref->acc();
@@ -643,7 +642,7 @@ namespace spot
 #endif
       auto& racc = ref->acc();
 
-      dcnf solver.comment("symmetry-breaking clauses\n");
+      cnf_comment("symmetry-breaking clauses\n");
       int j = 0;
       bdd all = bddtrue;
       while (all != bddfalse)
@@ -655,15 +654,15 @@ namespace spot
               {
                 transition t(i, s, k);
                 int ti = d.transid[t];
-                dcnf solver.comment("¬", t, '\n');
+                cnf_comment("¬", t, '\n');
                 solver.add({-ti, 0});
               }
            ++j;
          }
       if (!solver.get_nb_clauses())
-        dcnf solver.comment("(none)\n");
+        cnf_comment("(none)\n");
 
-      dcnf solver.comment("(8) the candidate automaton is complete\n");
+      cnf_comment("(8) the candidate automaton is complete\n");
       for (unsigned q1 = 0; q1 < d.cand_size; ++q1)
         {
           bdd all = bddtrue;
@@ -695,18 +694,18 @@ namespace spot
             }
         }
 
-      dcnf solver.comment("(9) the initial state is reachable\n");
+      cnf_comment("(9) the initial state is reachable\n");
       {
         unsigned init = ref->get_init_state_number();
-        dcnf solver.comment(path(0, init), '\n');
+        cnf_comment(path(0, init), '\n');
         solver.add({d.pathid[path(0, init)], 0});
       }
 
       if (colored)
         {
           unsigned nacc = d.cand_nacc;
-          dcnf solver.comment("transitions belong to exactly one of the",
-              nacc, "acceptance set\n");
+          cnf_comment("transitions belong to exactly one of the", nacc,
+              "acceptance set\n");
           bdd all = bddtrue;
           while (all != bddfalse)
             {
@@ -741,7 +740,7 @@ namespace spot
 
       if (!d.all_silly_cand_acc.empty())
         {
-          dcnf solver.comment("no transition with silly acceptance\n");
+          cnf_comment("no transition with silly acceptance\n");
           bdd all = bddtrue;
           while (all != bddfalse)
             {
@@ -751,7 +750,7 @@ namespace spot
                 for (unsigned q2 = 0; q2 < d.cand_size; ++q2)
                   for (auto& s: d.all_silly_cand_acc)
                     {
-                      dcnf solver.comment("no (", q1, ',',
+                      cnf_comment("no (", q1, ',',
                           bdd_format_formula(debug_dict, l),
                           ',', s, ',', q2, ")\n");
                       for (unsigned v: s.sets())
@@ -778,7 +777,7 @@ namespace spot
           {
             if (!sm.reachable_state(q1p))
               continue;
-            dcnf solver.comment("(10) augmenting paths based on Cand[", q1,
+            cnf_comment("(10) augmenting paths based on Cand[", q1,
                 "] and Ref[", q1p, "]\n");
             path p1(q1, q1p);
             int p1id = d.pathid[p1];
@@ -803,7 +802,7 @@ namespace spot
                         if (p1id == succ)
                           continue;
 
-                        dcnf solver.comment(p1, " ∧ ", t, "δ → ", p2, '\n');
+                        cnf_comment(p1, " ∧ ", t, "δ → ", p2, '\n');
                         solver.add({-p1id, -ti, succ, 0});
                       }
                   }
@@ -845,7 +844,7 @@ namespace spot
                           path p(q1, q1p, q2, q2p,
                                  d.all_cand_acc[f], refhist);
 
-                          dcnf solver.comment("(11&12&13) paths from ", p,
+                          cnf_comment("(11&12&13) paths from ", p,
                               '\n');
 
                           int pid = d.pathid[p];
@@ -998,7 +997,7 @@ namespace spot
                   }
             }
         }
-      return solver.update_header(d.nvars);
+      return solver.stats(d.nvars);
     }
 
     static twa_graph_ptr

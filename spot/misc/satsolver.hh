@@ -86,7 +86,7 @@ namespace spot
     satsolver();
     ~satsolver();
 
-    /// \brief Initialize privrate attributes
+    /// \brief Initialize private attributes
     void start();
 
     /// \brief Add many vars to the current clause and end it or not
@@ -95,12 +95,10 @@ namespace spot
     void add(int v);
     /// \breif Get the current number of clauses()
     int get_nb_clauses() const;
-    /// \breif Add an empty line to the cnf_file
-    void add_empty_line();
     /// \breif Update cnf_file's header with the correct stats and return them
-    std::pair<int, int> update_header(int nvars);
+    std::pair<int, int> stats(int nvars);
     /// \breif Create unsatisfiable cnf_file, return stats about it
-    std::pair<int, int> update_header();
+    std::pair<int, int> stats();
 
     /// \breif Add comment in cnf file -- Variadic Template
     template<typename T>
@@ -144,6 +142,7 @@ namespace spot
     temporary_file* cnf_tmp_;
     std::ostream* cnf_stream_;
     clause_counter* nclauses_;
+
   };
 
   /// \brief Extract the solution of a SAT solver output.
