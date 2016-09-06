@@ -50,9 +50,11 @@
 
 #define DEBUG 0
 #if DEBUG
+#define dcnf
 #define dout out << "c "
 #define trace std::cerr
 #else
+#define dcnf while (0)
 #define dout while (0) std::cout
 #define trace dout
 #endif
@@ -639,12 +641,12 @@ namespace spot
 #if DEBUG
       debug_ref_acc = &ref->acc();
       debug_cand_acc = &d.cacc;
-      dout << "ref_size: " << ref_size << '\n';
-      dout << "cand_size: " << d.cand_size << '\n';
+      solver.comment("ref_size:", ref_size, '\n');
+      solver.comment("cand_size:", d.cand_size, '\n');
 #endif
       auto& racc = ref->acc();
 
-      dout << "symmetry-breaking clauses\n";
+      dcnf solver.comment("symmetry-breaking clauses\n");
       int j = 0;
       bdd all = bddtrue;
       while (all != bddfalse)
@@ -656,15 +658,15 @@ namespace spot
               {
                 transition t(i, s, k);
                 int ti = d.transid[t];
-                dout << "¬" << t << '\n';
+                dcnf solver.comment("¬", t, '\n');
                 solver.add(-ti, true);
               }
            ++j;
          }
       if (!solver.get_nb_clauses())
-         dout << "(none)\n";
+        dcnf solver.comment("(none)\n");
 
-      dout << "(8) the candidate automaton is complete\n";
+      dcnf solver.comment("(8) the candidate automaton is complete\n");
       for (unsigned q1 = 0; q1 < d.cand_size; ++q1)
         {
           bdd all = bddtrue;
@@ -674,15 +676,15 @@ namespace spot
               all -= s;
 
 #if DEBUG
-              dout;
+              solver.comment("");
               for (unsigned q2 = 0; q2 < d.cand_size; ++q2)
                 {
                   transition t(q1, s, q2);
-                  out << t << "δ";
+                  solver.comment_rec(t, "δ");
                   if (q2 != d.cand_size)
-                    out << " ∨ ";
+                    solver.comment_rec(" ∨ ");
                 }
-              out << '\n';
+              solver.comment_rec('\n');
 #endif
 
               for (unsigned q2 = 0; q2 < d.cand_size; ++q2)
@@ -696,18 +698,18 @@ namespace spot
             }
         }
 
-      dout << "(9) the initial state is reachable\n";
+      dcnf solver.comment("(9) the initial state is reachable\n");
       {
         unsigned init = ref->get_init_state_number();
-        dout << path(0, init) << '\n';
+        dcnf solver.comment(path(0, init), '\n');
         solver.add(d.pathid[path(0, init)], true);
       }
 
       if (colored)
         {
           unsigned nacc = d.cand_nacc;
-          dout << "transitions belong to exactly one of the "
-               << nacc << " acceptance set\n";
+          dcnf solver.comment("transitions belong to exactly one of the",
+              nacc, "acceptance set\n");
           bdd all = bddtrue;
           while (all != bddfalse)
             {
@@ -742,7 +744,7 @@ namespace spot
 
       if (!d.all_silly_cand_acc.empty())
         {
-          dout << "no transition with silly acceptance\n";
+          dcnf solver.comment("no transition with silly acceptance\n");
           bdd all = bddtrue;
           while (all != bddfalse)
             {
@@ -752,9 +754,9 @@ namespace spot
                 for (unsigned q2 = 0; q2 < d.cand_size; ++q2)
                   for (auto& s: d.all_silly_cand_acc)
                     {
-                      dout << "no (" << q1 << ','
-                           << bdd_format_formula(debug_dict, l)
-                           << ',' << s << ',' << q2 << ")\n";
+                      dcnf solver.comment("no (", q1, ',',
+                          bdd_format_formula(debug_dict, l),
+                          ',', s, ',', q2, ")\n");
                       for (unsigned v: s.sets())
                         {
                           transition_acc ta(q1, l, d.cacc.mark(v), q2);
@@ -779,8 +781,8 @@ namespace spot
           {
             if (!sm.reachable_state(q1p))
               continue;
-            dout << "(10) augmenting paths based on Cand[" << q1
-                 << "] and Ref[" << q1p << "]\n";
+            dcnf solver.comment("(10) augmenting paths based on Cand[", q1,
+                "] and Ref[", q1p, "]\n");
             path p1(q1, q1p);
             int p1id = d.pathid[p1];
 
@@ -804,7 +806,7 @@ namespace spot
                         if (p1id == succ)
                           continue;
 
-                        dout << p1 << " ∧ " << t << "δ → " << p2 << '\n';
+                        dcnf solver.comment(p1, " ∧ ", t, "δ → ", p2, '\n');
                         solver.add({-p1id, -ti, succ}, true);
                       }
                   }
@@ -846,7 +848,8 @@ namespace spot
                           path p(q1, q1p, q2, q2p,
                                  d.all_cand_acc[f], refhist);
 
-                          dout << "(11&12&13) paths from " << p << '\n';
+                          dcnf solver.comment("(11&12&13) paths from ", p,
+                              '\n');
 
                           int pid = d.pathid[p];
 
@@ -884,10 +887,9 @@ namespace spot
                                           for (auto& v: missing)
                                             {
 #if DEBUG
-                                              dout << (rejloop ?
-                                                       "(11) " : "(12) ")
-                                                   << p << " ∧ "
-                                                   << t << "δ → (";
+                                              solver.comment((rejloop ?
+                                                       "(11) " : "(12) "), p,
+                                                  " ∧ ", t, "δ → (");
                                               const char* orsep = "";
                                               for (int s: v)
                                                 {
@@ -897,20 +899,21 @@ namespace spot
                                                         ta(q2, l,
                                                            d.cacc.mark(-s - 1),
                                                            q1);
-                                                      solver() << orsep
-                                                        << "¬" << ta;
+                                                      solver.comment_rec(orsep,
+                                                        "¬", ta);
                                                     }
                                                   else
                                                     {
                                                       transition_acc
                                                         ta(q2, l,
                                                            d.cacc.mark(s), q1);
-                                                      solver() << orsep << ta;
+                                                      solver.comment_rec(orsep,
+                                                          ta);
                                                     }
-                                                  solver() << "FC";
+                                                  solver.comment_rec("FC");
                                                   orsep = " ∨ ";
                                                 }
-                                              solver() << ")\n";
+                                              solver.comment_rec(")\n");
 #endif // DEBUG
                                               solver.add({-pid, -ti}, false);
                                               for (int s: v)
@@ -956,8 +959,8 @@ namespace spot
                                             if (pid == p2id)
                                               continue;
 #if DEBUG
-                                            dout << "(13) " << p << " ∧ "
-                                                 << t << "δ ";
+                                            solver.comment("(13) ", p, " ∧ ",
+                                                 t, "δ ");
 
                                             auto biga_ = d.all_cand_acc[f];
                                             for (unsigned m = 0;
@@ -969,10 +972,11 @@ namespace spot
                                                 const char* not_ = "¬";
                                                 if (biga_.has(m))
                                                   not_ = "";
-                                                solver() <<  " ∧ " << not_
-                                                    << ta << "FC";
+                                                solver.comment_rec(" ∧ ", not_,
+                                                    ta, "FC");
                                               }
-                                            solver() << " → " << p2 << '\n';
+                                            solver.comment_rec(" → ", p2,
+                                                '\n');
 #endif
                                             solver.add({-pid, -ti}, false);
                                             auto biga = d.all_cand_acc[f];
