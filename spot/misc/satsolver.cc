@@ -141,6 +141,9 @@ namespace spot
     cnf_stream_ = new std::ofstream(cnf_tmp_->name(), std::ios_base::trunc);
     cnf_stream_->exceptions(std::ofstream::failbit | std::ofstream::badbit);
     nclauses_ = new clause_counter();
+
+    // Add empty line for the header
+    *cnf_stream_ << "                                                 \n";
   }
 
   void satsolver::end_clause()
@@ -171,12 +174,7 @@ namespace spot
     return nclauses_->nb_clauses();
   }
 
-  void satsolver::add_empty_line()
-  {
-    *cnf_stream_ << "                                                 \n";
-  }
-
-  std::pair<int, int> satsolver::update_header(int nvars)
+  std::pair<int, int> satsolver::stats(int nvars)
   {
     int nclaus = nclauses_->nb_clauses();
     cnf_stream_->seekp(0);
@@ -184,12 +182,11 @@ namespace spot
     return std::make_pair(nvars, nclaus);
   }
 
-  std::pair<int, int> satsolver::update_header()
+  std::pair<int, int> satsolver::stats()
   {
     *cnf_stream_ << "p cnf 1 2\n-1 0\n1 0\n";
     return std::make_pair(1, 2);
   }
-
 
   satsolver::solution_pair
   satsolver::get_solution()
