@@ -298,8 +298,6 @@ namespace spot
                           const const_twa_graph_ptr& ref,
                           dict& d, bool state_based)
     {
-      clause_counter nclauses;
-
       // Compute the AP used in the hard way.
       bdd ap = bddtrue;
       for (auto& t: ref->edges())
@@ -352,11 +350,10 @@ namespace spot
                 int ti = d.transid[t];
                 dout << "¬" << t << '\n';
                 solver.add(-ti, true);
-                ++nclauses;
               }
            ++j;
          }
-      if (!nclauses.nb_clauses())
+      if (!solver.get_nb_clauses())
          dout << "(none)\n";
 
       dout << "(1) the candidate automaton is complete\n";
@@ -387,8 +384,6 @@ namespace spot
                   solver.add(ti, false);
                 }
               solver.end_clause();
-
-              ++nclauses;
             }
         }
 
@@ -397,7 +392,6 @@ namespace spot
         unsigned init = ref->get_init_state_number();
         dout << state_pair(0, init) << '\n';
         solver.add(d.prodid[state_pair(0, init)], true);
-        ++nclauses;
       }
 
       for (std::map<state_pair, int>::const_iterator pit = d.prodid.begin();
@@ -430,7 +424,6 @@ namespace spot
 
                       dout << pit->first << " ∧ " << t << "δ → " << p2 << '\n';
                       solver.add({-pit->second, -ti, succ}, true);
-                      ++nclauses;
                     }
                 }
             }
@@ -496,7 +489,6 @@ namespace spot
                                     dout << p1 << "R ∧ " << t << "δ → ¬" << t
                                          << "F\n";
                                     solver.add({-pid1, -ti, -ta}, true);
-                                    ++nclauses;
                                   }
 
 
@@ -521,7 +513,6 @@ namespace spot
                                     dout << p1 << "R ∧ " << t << "δ → " << p2
                                          << "R\n";
                                     solver.add({-pid1, -ti, pid2}, true);
-                                    ++nclauses;
                                   }
                               }
                           }
@@ -587,7 +578,6 @@ namespace spot
                                     dout << p1 << "C ∧ " << t << "δ → " << t
                                          << "F\n";
                                     solver.add({-pid1, -ti, ta}, true);
-                                    ++nclauses;
                                   }
                               }
                             else // (7) no loop
@@ -612,7 +602,6 @@ namespace spot
                                          << t << "F → " << p2 << "C\n";
 
                                     solver.add({-pid1, -ti, ta, pid2}, true);
-                                    ++nclauses;
                                   }
                               }
                           }
@@ -620,8 +609,8 @@ namespace spot
                   }
             }
         }
-      solver.update_header(d.nvars, nclauses.nb_clauses());
-      return std::make_pair(d.nvars, nclauses.nb_clauses());
+      solver.update_header(d.nvars);
+      return std::make_pair(d.nvars, solver.get_nb_clauses());
     }
 
     static twa_graph_ptr

@@ -91,12 +91,14 @@ namespace spot
     void add(std::initializer_list<int> values, bool end);
     /// \brief Add a var to the current clause and end it or not
     void add(int v, bool end);
-    /// \breif End the current clause
+    /// \breif End the current clause and increment the counter
     void end_clause();
+    /// \breif Get the current number of clauses()
+    int get_nb_clauses() const;
     /// \breif Add an empty line to the cnf_file
     void add_empty_line();
     /// \breif Update cnf_file's header with the right numbers
-    void update_header(int vars, int clauses);
+    void update_header(int vars);
 
     typedef std::vector<int> solution;
     typedef std::pair<int, solution> solution_pair;
@@ -104,6 +106,7 @@ namespace spot
   private:
     temporary_file* cnf_tmp_;
     std::ostream* cnf_stream_;
+    clause_counter* nclauses_;
   };
 
   /// \brief Extract the solution of a SAT solver output.
