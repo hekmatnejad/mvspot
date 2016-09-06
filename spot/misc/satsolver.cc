@@ -144,22 +144,24 @@ namespace spot
 
   void satsolver::end_clause()
   {
-    *cnf_stream_ << "0\n";
+    *cnf_stream_ << '\n';
     *nclauses_ += 1;
   }
 
-  void satsolver::add(std::initializer_list<int> values, bool end)
+  void satsolver::add(std::initializer_list<int> values)
   {
     for (auto& v : values)
+    {
       *cnf_stream_ << v << ' ';
-    if (end)
-      end_clause();
+      if (!v)
+        end_clause();
+    }
   }
 
-  void satsolver::add(int v, bool end)
+  void satsolver::add(int v)
   {
     *cnf_stream_ << v << ' ';
-    if (end)
+    if (!v)
       end_clause();
   }
 
@@ -168,10 +170,18 @@ namespace spot
     *cnf_stream_ << "                                                 \n";
   }
 
-  void satsolver::update_header(int vars)
+  std::pair<int, int> satsolver::update_header(int nvars)
   {
+    int nclaus = nclauses_->nb_clauses();
     cnf_stream_->seekp(0);
-    *cnf_stream_ << "p cnf " << vars << ' ' << nclauses_->nb_clauses();
+    *cnf_stream_ << "p cnf " << nvars << ' ' << nclaus;
+    return std::make_pair(nvars, nclaus);
+  }
+
+  std::pair<int, int> satsolver::update_header()
+  {
+    *cnf_stream_ << "p cnf 1 2\n-1 0\n1 0\n";
+    return std::make_pair(1, 2);
   }
 
   satsolver::~satsolver()

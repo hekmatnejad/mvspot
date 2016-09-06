@@ -88,26 +88,26 @@ namespace spot
     std::ostream& operator()();
 
     /// \brief Add many vars to the current clause and end it or not
-    void add(std::initializer_list<int> values, bool end);
+    void add(std::initializer_list<int> values);
     /// \brief Add a var to the current clause and end it or not
-    void add(int v, bool end);
-    /// \breif End the current clause and increment the counter
-    void end_clause();
+    void add(int v);
     /// \breif Get the current number of clauses()
     int get_nb_clauses() const;
     /// \breif Add an empty line to the cnf_file
     void add_empty_line();
-    /// \breif Update cnf_file's header with the right numbers
-    void update_header(int vars);
+    /// \breif Update cnf_file's header with the correct stats and return them
+    std::pair<int, int> update_header(int nvars);
+    /// \breif Create unsatisfiable cnf_file, return stats about it
+    std::pair<int, int> update_header();
 
-    /// \breif Add comment in the cnf_file -- Variadic Template
+    /// \breif Add comment in cnf file -- Variadic Template
     template<typename T>
     void comment_rec(T single)
     {
       *cnf_stream_ << single << ' ';
     }
 
-    /// \breif Add comment in the cnf_file -- Variadic Template
+    /// \breif Add comment in cnf_file -- Variadic Template
     template<typename T, typename... Args>
     void comment_rec(T first, Args... args)
     {
@@ -135,9 +135,14 @@ namespace spot
     solution_pair get_solution();
 
   private:
+    /// \breif End the current clause and increment the counter
+    void end_clause();
+
+  private:
     temporary_file* cnf_tmp_;
     std::ostream* cnf_stream_;
     clause_counter* nclauses_;
+
   };
 
   /// \brief Extract the solution of a SAT solver output.
