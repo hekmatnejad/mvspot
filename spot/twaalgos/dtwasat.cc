@@ -602,7 +602,6 @@ namespace spot
 #if DEBUG
       debug_dict = ref->get_dict();
 #endif
-      clause_counter nclauses;
 
       // Compute the AP used in the hard way.
       bdd ap = bddtrue;
@@ -659,11 +658,10 @@ namespace spot
                 int ti = d.transid[t];
                 dout << "¬" << t << '\n';
                 solver.add(-ti, true);
-                ++nclauses;
               }
            ++j;
          }
-      if (!nclauses.nb_clauses())
+      if (!solver.get_nb_clauses())
          dout << "(none)\n";
 
       dout << "(8) the candidate automaton is complete\n";
@@ -695,7 +693,6 @@ namespace spot
                   solver.add(ti, false);
                 }
               solver.end_clause();
-              ++nclauses;
             }
         }
 
@@ -704,7 +701,6 @@ namespace spot
         unsigned init = ref->get_init_state_number();
         dout << path(0, init) << '\n';
         solver.add(d.pathid[path(0, init)], true);
-        ++nclauses;
       }
 
       if (colored)
@@ -731,7 +727,6 @@ namespace spot
                               transition_acc tj(q1, l, {j}, q2);
                               int taj = d.transaccid[tj];
                               solver.add({-tai, -taj}, true);
-                              ++nclauses;
                             }
                       }
                     for (unsigned i = 0; i < nacc; ++i)
@@ -741,7 +736,6 @@ namespace spot
                         solver.add(tai, false);
                       }
                     solver.end_clause();
-                    ++nclauses;
                   }
             }
         }
@@ -776,7 +770,6 @@ namespace spot
                           solver.add(tai, false);
                         }
                       solver.end_clause();
-                      ++nclauses;
                     }
             }
         }
@@ -813,7 +806,6 @@ namespace spot
 
                         dout << p1 << " ∧ " << t << "δ → " << p2 << '\n';
                         solver.add({-p1id, -ti, succ}, true);
-                        ++nclauses;
                       }
                   }
               }
@@ -942,7 +934,6 @@ namespace spot
                                                     solver.add(tai, false);
                                                   }
                                               solver.end_clause();
-                                              ++nclauses;
                                             }
                                         }
                                       // (13) augmenting paths (always).
@@ -997,7 +988,6 @@ namespace spot
                                                 solver.add(tai, false);
                                               }
                                             solver.add(p2id, true);
-                                            ++nclauses;
                                           }
                                       }
                                     }
@@ -1007,8 +997,8 @@ namespace spot
                   }
             }
         }
-      solver.update_header(d.nvars, nclauses.nb_clauses());
-      return std::make_pair(d.nvars, nclauses.nb_clauses());
+      solver.update_header(d.nvars);
+      return std::make_pair(d.nvars, solver.get_nb_clauses());
     }
 
     static twa_graph_ptr

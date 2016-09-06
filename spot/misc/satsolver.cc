@@ -133,24 +133,32 @@ namespace spot
     cnf_tmp_ = create_tmpfile("sat-", ".cnf");
     cnf_stream_ = new std::ofstream(cnf_tmp_->name(), std::ios_base::trunc);
     cnf_stream_->exceptions(std::ofstream::failbit | std::ofstream::badbit);
+
+    nclauses_ = new clause_counter();
+  }
+
+  int satsolver::get_nb_clauses() const
+  {
+    return nclauses_->nb_clauses();
   }
 
   void satsolver::end_clause()
   {
     *cnf_stream_ << "0\n";
+    *nclauses_ += 1;
   }
 
   void satsolver::add(std::initializer_list<int> values, bool end)
   {
     for (auto& v : values)
-      *cnf_stream_ << std::to_string(v) << ' ';
+      *cnf_stream_ << v << ' ';
     if (end)
       end_clause();
   }
 
   void satsolver::add(int v, bool end)
   {
-    *cnf_stream_ << std::to_string(v) << ' ';
+    *cnf_stream_ << v << ' ';
     if (end)
       end_clause();
   }
@@ -160,16 +168,17 @@ namespace spot
     *cnf_stream_ << "                                                 \n";
   }
 
-  void satsolver::update_header(int vars, int clauses)
+  void satsolver::update_header(int vars)
   {
     cnf_stream_->seekp(0);
-    *cnf_stream_ << "p cnf " << vars << ' ' << clauses;
+    *cnf_stream_ << "p cnf " << vars << ' ' << nclauses_->nb_clauses();
   }
 
   satsolver::~satsolver()
   {
     delete cnf_tmp_;
     delete cnf_stream_;
+    delete nclauses_;
   }
 
   std::ostream& satsolver::operator()()
