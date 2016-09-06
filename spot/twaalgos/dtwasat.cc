@@ -630,10 +630,7 @@ namespace spot
 
       // empty automaton is impossible
       if (d.cand_size == 0)
-        {
-          solver() << "p cnf 1 2\n-1 0\n1 0\n";
-          return std::make_pair(1, 2);
-        }
+          return solver.update_header();
 
       // An empty line for the header
       solver.add_empty_line();
@@ -659,7 +656,7 @@ namespace spot
                 transition t(i, s, k);
                 int ti = d.transid[t];
                 dcnf solver.comment("¬", t, '\n');
-                solver.add(-ti, true);
+                solver.add({-ti, 0});
               }
            ++j;
          }
@@ -692,9 +689,9 @@ namespace spot
                   transition t(q1, s, q2);
                   int ti = d.transid[t];
 
-                  solver.add(ti, false);
+                  solver.add(ti);
                 }
-              solver.end_clause();
+              solver.add(0);
             }
         }
 
@@ -702,7 +699,7 @@ namespace spot
       {
         unsigned init = ref->get_init_state_number();
         dcnf solver.comment(path(0, init), '\n');
-        solver.add(d.pathid[path(0, init)], true);
+        solver.add({d.pathid[path(0, init)], 0});
       }
 
       if (colored)
@@ -728,16 +725,16 @@ namespace spot
                             {
                               transition_acc tj(q1, l, {j}, q2);
                               int taj = d.transaccid[tj];
-                              solver.add({-tai, -taj}, true);
+                              solver.add({-tai, -taj, 0});
                             }
                       }
                     for (unsigned i = 0; i < nacc; ++i)
                       {
                         transition_acc ti(q1, l, {i}, q2);
                         int tai = d.transaccid[ti];
-                        solver.add(tai, false);
+                        solver.add(tai);
                       }
-                    solver.end_clause();
+                    solver.add(0);
                   }
             }
         }
@@ -762,16 +759,16 @@ namespace spot
                           transition_acc ta(q1, l, d.cacc.mark(v), q2);
                           int tai = d.transaccid[ta];
                           assert(tai != 0);
-                          solver.add(-tai, false);
+                          solver.add(-tai);
                         }
                       for (unsigned v: d.cacc.comp(s).sets())
                         {
                           transition_acc ta(q1, l, d.cacc.mark(v), q2);
                           int tai = d.transaccid[ta];
                           assert(tai != 0);
-                          solver.add(tai, false);
+                          solver.add(tai);
                         }
-                      solver.end_clause();
+                      solver.add(0);
                     }
             }
         }
@@ -807,7 +804,7 @@ namespace spot
                           continue;
 
                         dcnf solver.comment(p1, " ∧ ", t, "δ → ", p2, '\n');
-                        solver.add({-p1id, -ti, succ}, true);
+                        solver.add({-p1id, -ti, succ, 0});
                       }
                   }
               }
@@ -915,7 +912,7 @@ namespace spot
                                                 }
                                               solver.comment_rec(")\n");
 #endif // DEBUG
-                                              solver.add({-pid, -ti}, false);
+                                              solver.add({-pid, -ti});
                                               for (int s: v)
                                                 if (s < 0)
                                                   {
@@ -925,7 +922,7 @@ namespace spot
                                                          q1);
                                                     int tai = d.transaccid[ta];
                                                     assert(tai != 0);
-                                                    solver.add(-tai, false);
+                                                    solver.add(-tai);
                                                   }
                                                 else
                                                   {
@@ -934,9 +931,9 @@ namespace spot
                                                          d.cacc.mark(s), q1);
                                                     int tai = d.transaccid[ta];
                                                     assert(tai != 0);
-                                                    solver.add(tai, false);
+                                                    solver.add(tai);
                                                   }
-                                              solver.end_clause();
+                                              solver.add(0);
                                             }
                                         }
                                       // (13) augmenting paths (always).
@@ -978,7 +975,7 @@ namespace spot
                                             solver.comment_rec(" → ", p2,
                                                 '\n');
 #endif
-                                            solver.add({-pid, -ti}, false);
+                                            solver.add({-pid, -ti});
                                             auto biga = d.all_cand_acc[f];
                                             for (unsigned m = 0;
                                                  m < d.cand_nacc; ++m)
@@ -989,9 +986,9 @@ namespace spot
                                                 int tai = d.transaccid[ta];
                                                 if (biga.has(m))
                                                   tai = -tai;
-                                                solver.add(tai, false);
+                                                solver.add(tai);
                                               }
-                                            solver.add(p2id, true);
+                                            solver.add({p2id, 0});
                                           }
                                       }
                                     }
@@ -1001,8 +998,7 @@ namespace spot
                   }
             }
         }
-      solver.update_header(d.nvars);
-      return std::make_pair(d.nvars, solver.get_nb_clauses());
+      return solver.update_header(d.nvars);
     }
 
     static twa_graph_ptr

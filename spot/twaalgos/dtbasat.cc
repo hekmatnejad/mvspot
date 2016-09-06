@@ -324,10 +324,7 @@ namespace spot
 
       // empty automaton is impossible
       if (d.cand_size == 0)
-        {
-          solver() << "p cnf 1 2\n-1 0\n1 0\n"; //FIXME
-          return std::make_pair(1, 2);
-        }
+        return solver.update_header();
 
       // An empty line for the header
       solver.add_empty_line();
@@ -351,7 +348,7 @@ namespace spot
                 transition t(i, s, k);
                 int ti = d.transid[t];
                 dcnf solver.comment("¬", t, '\n');
-                solver.add(-ti, true);
+                solver.add({-ti, 0});
               }
            ++j;
          }
@@ -383,9 +380,9 @@ namespace spot
                 {
                   transition t(q1, s, q2);
                   int ti = d.transid[t];
-                  solver.add(ti, false);
+                  solver.add(ti);
                 }
-              solver.end_clause();
+              solver.add(0);
             }
         }
 
@@ -393,7 +390,7 @@ namespace spot
       {
         unsigned init = ref->get_init_state_number();
         dcnf solver.comment(state_pair(0, init), '\n');
-        solver.add(d.prodid[state_pair(0, init)], true);
+        solver.add({d.prodid[state_pair(0, init)], 0});
       }
 
       for (std::map<state_pair, int>::const_iterator pit = d.prodid.begin();
@@ -424,8 +421,9 @@ namespace spot
                       if (pit->second == succ)
                         continue;
 
-                      dcnf solver.comment(pit->first, " ∧ ", t, "δ → ", p2, '\n');
-                      solver.add({-pit->second, -ti, succ}, true);
+                      dcnf solver.comment(pit->first, " ∧ ", t, "δ → ", p2,
+                          '\n');
+                      solver.add({-pit->second, -ti, succ, 0});
                     }
                 }
             }
@@ -490,7 +488,7 @@ namespace spot
 
                                     dcnf solver.comment(p1, "R ∧ ", t, "δ → ¬",
                                         t, "F\n");
-                                    solver.add({-pid1, -ti, -ta}, true);
+                                    solver.add({-pid1, -ti, -ta, 0});
                                   }
 
 
@@ -514,7 +512,7 @@ namespace spot
 
                                     dcnf solver.comment(p1, "R ∧ ", t, "δ → ",
                                         p2, "R\n");
-                                    solver.add({-pid1, -ti, pid2}, true);
+                                    solver.add({-pid1, -ti, pid2, 0});
                                   }
                               }
                           }
@@ -579,7 +577,7 @@ namespace spot
 
                                     dcnf solver.comment(p1, "C ∧ ", t, "δ → ",
                                         t, "F\n");
-                                    solver.add({-pid1, -ti, ta}, true);
+                                    solver.add({-pid1, -ti, ta, 0});
                                   }
                               }
                             else // (7) no loop
@@ -600,9 +598,9 @@ namespace spot
                                     int ti = d.transid[t];
                                     int ta = d.transacc[t];
 
-                                    dcnf solver.comment(p1, "C ∧ ", t, "δ ∧ ¬", t,
-                                        "F → ", p2, "C\n");
-                                    solver.add({-pid1, -ti, ta, pid2}, true);
+                                    dcnf solver.comment(p1, "C ∧ ", t, "δ ∧ ¬",
+                                        t, "F → ", p2, "C\n");
+                                    solver.add({-pid1, -ti, ta, pid2, 0});
                                   }
                               }
                           }
@@ -610,8 +608,7 @@ namespace spot
                   }
             }
         }
-      solver.update_header(d.nvars);
-      return std::make_pair(d.nvars, solver.get_nb_clauses());
+      return solver.update_header(d.nvars);
     }
 
     static twa_graph_ptr
