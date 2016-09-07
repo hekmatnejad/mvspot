@@ -69,9 +69,11 @@ namespace spot
 
   /// \brief Interface with a SAT solver.
   ///
-  /// Call start() to create some temporary file, then send DIMACs
-  /// text to the stream returned by operator(), and finally call
-  /// get_solution().
+  /// Call start() to initialize the cnf file. This class provides the
+  /// necessary functions to add clauses, know how many clauses there are
+  /// currently, add a blank line to the header, update the header, comments...
+  /// It is impossible to write in the file without having to call these
+  /// functions.
   ///
   /// The satsolver called can be configured via the
   /// <code>SPOT_SATSOLVER</code> environment variable.  It
@@ -84,8 +86,8 @@ namespace spot
     satsolver();
     ~satsolver();
 
+    /// \brief Initialize privrate attributes
     void start();
-    std::ostream& operator()();
 
     /// \brief Add many vars to the current clause and end it or not
     void add(std::initializer_list<int> values);
@@ -142,7 +144,6 @@ namespace spot
     temporary_file* cnf_tmp_;
     std::ostream* cnf_stream_;
     clause_counter* nclauses_;
-
   };
 
   /// \brief Extract the solution of a SAT solver output.
