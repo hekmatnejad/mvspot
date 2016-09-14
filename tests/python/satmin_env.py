@@ -1,4 +1,3 @@
-
 # -*- mode: python; coding: utf-8 -*-
 # Copyright (C) 2015  Laboratoire de Recherche et Développement
 # de l'Epita
@@ -21,10 +20,14 @@
 import shutil
 import sys
 import spot
+import os
 
 # Ignore the test if glucose is not installed.
 if shutil.which("glucose") == None:
     sys.exit(77)
+
+start_spot_env = os.environ["SPOT_SATSOLVER"]
+os.environ["SPOT_SATSOLVER"] = 'glucose -verb=0 -model %I>%O'
 
 aut = spot.translate('GFa & GFb', 'BA')
 assert aut.num_sets() == 1
@@ -48,3 +51,5 @@ min4 = spot.sat_minimize(aut, acc='parity max odd 3',
                          colored=True, dichotomy=True)
 assert min4.num_sets() == 3
 assert min4.num_states() == 2
+
+os.environ["SPOT_SATSOLVER"] = start_spot_env

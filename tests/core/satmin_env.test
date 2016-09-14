@@ -21,6 +21,12 @@
 . ./defs
 set -e
 
+# Skip if $SATSOLVE is not installed.
+(${SATSOLVER-glucose} --help >/dev/null 2>&1) || exit 77
+
+# Set SPOT_SATSOLVER env var
+export SPOT_SATSOLVER="glucose -verb=0 -model %I>%O"
+
 ltl2tgba=ltl2tgba
 ltlcross=ltlcross
 
