@@ -63,7 +63,6 @@ ltl2tgba -BD -x sat-minimize "GF(a <-> XXb)" -H >out
 grep 'properties:.*state-acc' out
 grep 'properties:.*deterministic' out
 
-
 # DRA produced by ltl2dstar for GFp0 -> GFp1
 cat >test.hoa <<EOF
 HOA: v1
@@ -104,13 +103,29 @@ EOF
 $autfilt --sat-minimize='acc="Fin(0)|Inf(1)"' test.hoa --stats=%s >output
 test `cat output` = 1
 
+$autfilt --sat-minimize='acc="Fin(0)|Inf(1)",incr' test.hoa --stats=%s >output
+test `cat output` = 1
+
 # How about a state-based DSA?
 $autfilt -S --sat-minimize='acc="Fin(0)|Inf(1)"' test.hoa \
 	 --stats=%s > output
 test `cat output` = 3
 
+$autfilt -S --sat-minimize='acc="Fin(0)|Inf(1)",incr' test.hoa \
+	 --stats=%s > output
+test `cat output` = 3
+
 # How about a state-based DPA?
 $autfilt -S --sat-minimize='acc="parity max even 3",colored' -H test.hoa \
+	 > output
+cat output
+grep 'properties:.*colored' output
+grep 'States: 3' output
+grep 'acc-name: parity max even 3' output
+grep 'Acceptance: 3 Inf(2) | (Fin(1) & Inf(0))' output
+test 3 = `grep -c 'State: [012] {[012]}' output`
+
+$autfilt -S --sat-minimize='acc="parity max even 3",colored,incr' -H test.hoa \
 	 > output
 cat output
 grep 'properties:.*colored' output
@@ -149,10 +164,14 @@ properties: trans-labels explicit-labels trans-acc colored complete
 properties: deterministic
 --BODY--
 State: 0
-[0] 0 {0}
-[!0] 0 {1}
+[!0] 0 {0}
+[0] 0 {1}
 --END--
 EOF
+
+diff output expected
+
+$autfilt -H --sat-minimize='incr' special.hoa > output
 
 diff output expected
 
@@ -175,10 +194,22 @@ $autfilt --sat-minimize='acc="Streett 1",max-states=2' foo.hoa \
 	 --stats=%s >out
 test "`cat out`" = 1
 
+$autfilt --sat-minimize='acc="Streett 1",max-states=2,incr' foo.hoa \
+	 --stats=%s >out
+test "`cat out`" = 1
+
 $autfilt --sat-minimize='acc="Rabin 1",max-states=4' foo.hoa \
 	 --stats=%s >out && exit 1
 test -z "`cat out`"
 
+$autfilt --sat-minimize='acc="Rabin 1",max-states=4,incr' foo.hoa \
+	 --stats=%s >out && exit 1
+test -z "`cat out`"
+
 $autfilt --sat-minimize='acc="Inf(0)&Fin(1)|Inf(2)",states=1' foo.hoa \
+	 --stats=%s >out
+test "`cat out`" = 1
+
+$autfilt --sat-minimize='acc="Inf(0)&Fin(1)|Inf(2)",states=1,incr' foo.hoa \
 	 --stats=%s >out
 test "`cat out`" = 1

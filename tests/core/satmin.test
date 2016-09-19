@@ -91,4 +91,5 @@ $ltlcross -F formulas \
   "$ltl2tgba --det --lbtt -x sat-states=3 %f >%T" \
   "$ltl2tgba --det --lbtt -x sat-minimize %f >%T" \
   "$ltl2tgba --det --lbtt -x sat-minimize=2 %f >%T" \
+  "$ltl2tgba --det --lbtt -x sat-minimize=3 %f >%T" \
   --json=det.json
