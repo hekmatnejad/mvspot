@@ -418,8 +418,11 @@ namespace spot
               res = dtba_sat_synthetize(res, sat_states_, state_based_);
             else if (sat_minimize_ == 1 || sat_minimize_ == -1)
               res = dtba_sat_minimize(res, state_based_);
-            else  // sat_minimize_ == 2
+            else if (sat_minimize_ == 2)
               res = dtba_sat_minimize_dichotomy(res, state_based_);
+            else // sat_minimize_ = 3
+              res = dtba_sat_minimize_incr(res, state_based_);
+
           }
         else
           {
@@ -433,8 +436,13 @@ namespace spot
                 (res, target_acc,
                  acc_cond::acc_code::generalized_buchi(target_acc),
                  state_based_);
-            else  // sat_minimize_ == 2
+            else if (sat_minimize_ == 2)
               res = dtwa_sat_minimize_dichotomy
+                (res, target_acc,
+                 acc_cond::acc_code::generalized_buchi(target_acc),
+                 state_based_);
+            else // sat_minimize_ = 3
+              res = dtwa_sat_minimize_incr
                 (res, target_acc,
                  acc_cond::acc_code::generalized_buchi(target_acc),
                  state_based_);
