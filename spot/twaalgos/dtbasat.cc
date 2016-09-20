@@ -737,11 +737,75 @@ namespace spot
     if (!solution.second.empty())
       res = sat_build(solution.second, d, a, state_based);
 
-    // Print log if env var SPOT_SATLOG is set.
-    print_log(t, target_state_number, res, solver);
+    print_log(t, target_state_number, res, solver); // If SPOT_SATLOG is set.
 
     trace << "dtba_sat_synthetize(...) = " << res << '\n';
     return res;
+  }
+
+  twa_graph_ptr
+  dtba_sat_minimize_incr(const const_twa_graph_ptr& a,
+                         bool state_based, int max_states)
+  {
+    if (!a->acc().is_buchi())
+      throw std::runtime_error
+        ("dtba_sat_minimize_incr() can only work with Büchi acceptance");
+    dict d;
+    d.cand_size = (max_states < 0) ?
+      stats_reachable(a).states - 1 : max_states;
+    if (d.cand_size == 0)
+      return nullptr;
+
+    trace << "dtba_sat_minimize_incr(..., states = " << d.cand_size
+      << ", state_based = " << state_based << ")\n";
+
+    // First iteration of classic solving.
+    satsolver solver;
+    timer_map t1;
+    t1.start("encode");
+    dtba_to_sat(solver, a, d, state_based);
+    t1.stop("encode");
+    t1.start("solve");
+    satsolver::solution_pair solution = solver.get_solution();
+    t1.stop("solve");
+    twa_graph_ptr next = nullptr;
+    if (!solution.second.empty())
+      next = sat_build(solution.second, d, a, state_based);
+    print_log(t1, d.cand_size, next, solver); // if SPOT_SATLOG is set.
+
+    // Compute the AP used.
+    bdd ap = a->ap_vars();
+
+    // Incremental solving loop.
+    int reach_states = 0;
+    twa_graph_ptr prev = nullptr;
+    unsigned orig_cand_size = d.cand_size;
+    unsigned alpha_size = d.alpha_vect.size();
+    while (next && d.cand_size > 0)
+    {
+      t1.start("encode");
+      prev = next;
+      reach_states = stats_reachable(prev).states;
+      cnf_comment("Next iteration:", reach_states - 1, "\n");
+
+      // Add new constraints.
+      for (unsigned i = reach_states - 1; i < d.cand_size; ++i)
+        for (unsigned l = 0; l < alpha_size; ++l)
+          for (unsigned j = 0; j < orig_cand_size; ++j)
+            solver.add({-d.transid(j, l, i), 0});
+
+      d.cand_size = reach_states - 1;
+      t1.stop("encode");
+      t1.start("solve");
+      solution = solver.get_solution();
+      t1.stop("solve");
+      next = solution.second.empty() ? nullptr :
+        sat_build(solution.second, d, prev, state_based);
+
+      print_log(t1, d.cand_size, next, solver); // If SPOT_SATLOG is set.
+    }
+
+    return prev;
   }
 
   twa_graph_ptr

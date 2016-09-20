@@ -541,7 +541,7 @@ namespace spot
       // Compute the AP used.
       bdd ap = ref->ap_vars();
 
-      // Count the number of atomic propositions
+      // Count the number of atomic propositions.
       int nap = 0;
       {
         bdd cur = ap;
@@ -1015,8 +1015,7 @@ namespace spot
     if (!solution.second.empty())
       res = sat_build(solution.second, d, a, state_based);
 
-    // Print log if env var SPOT_SATLOG is set.
-    print_log(t, target_state_number, res, solver);
+    print_log(t, target_state_number, res, solver); // if SPOT_SATLOG is set.
 
     trace << "dtwa_sat_synthetize(...) = " << res << '\n';
     return res;
@@ -1053,6 +1052,74 @@ namespace spot
 
       return lw <= rw ? left : right;
     }
+  }
+
+  twa_graph_ptr
+  dtwa_sat_minimize_incr(const const_twa_graph_ptr& a,
+                         unsigned target_acc_number,
+                         const acc_cond::acc_code& target_acc,
+                         bool state_based, int max_states,
+                         bool colored)
+  {
+    dict d(a);
+    d.cand_size = (max_states < 0) ?
+      stats_reachable(a).states - 1 : max_states;
+    d.cand_nacc = target_acc_number;
+    d.cand_acc = target_acc;
+    if (d.cand_size == 0)
+      return nullptr;
+
+    trace << "dtwa_sat_minimize_incr(..., nacc = " << target_acc_number
+      << ", acc = \"" << target_acc << "\", states = " << d.cand_size
+      << ", state_based = " << state_based << ")\n";
+
+    // First iteration of classic solving.
+    satsolver solver;
+    timer_map t1;
+    t1.start("encode");
+    dtwa_to_sat(solver, a, d, state_based, colored);
+    t1.stop("encode");
+    t1.start("solve");
+    satsolver::solution_pair solution = solver.get_solution();
+    t1.stop("solve");
+    twa_graph_ptr next = nullptr;
+    if (!solution.second.empty())
+      next = sat_build(solution.second, d, a, state_based);
+    print_log(t1, d.cand_size, next, solver); // If SPOT_SATLOG is set.
+
+    // Compute the AP used.
+    bdd ap = a->ap_vars();
+
+    // Incremental solving loop.
+    int reach_states = 0;
+    twa_graph_ptr prev = nullptr;
+    unsigned orig_cand_size = d.cand_size;
+    unsigned alpha_size = d.alpha_vect.size();
+    while (next && d.cand_size > 0)
+    {
+      t1.start("encode");
+      prev = next;
+      reach_states = stats_reachable(prev).states;
+      cnf_comment("Next iteration:", reach_states - 1, "\n");
+
+      // Add new constraints.
+      for (unsigned i = reach_states - 1; i < d.cand_size; ++i)
+        for (unsigned l = 0; l < alpha_size; ++l)
+          for (unsigned j = 0; j < orig_cand_size; ++j)
+            solver.add({-d.transid(j, l, i), 0});
+
+      d.cand_size = reach_states - 1;
+      t1.stop("encode");
+      t1.start("solve");
+      solution = solver.get_solution();
+      t1.stop("solve");
+      next = solution.second.empty() ? nullptr :
+        sat_build(solution.second, d, prev, state_based);
+
+      print_log(t1, d.cand_size, next, solver); // If SPOT_SATLOG is set.
+    }
+
+    return prev;
   }
 
   twa_graph_ptr
@@ -1135,6 +1202,7 @@ namespace spot
     auto accstr = om.get_str("acc");
     bool colored = om.get("colored", 0);
     int preproc = om.get("preproc", 3);
+    bool incr1 = om.get("incr1", 0);
 
     // No more om.get() below this.
     om.report_unused_options();
@@ -1227,10 +1295,12 @@ namespace spot
       {
         auto orig = a;
         if (!target_is_buchi || !a->acc().is_buchi() || colored)
-          a = (dicho ? dtwa_sat_minimize_dichotomy : dtwa_sat_minimize)
+          a = (dicho ? dtwa_sat_minimize_dichotomy
+              : incr1 ? dtwa_sat_minimize_incr : dtwa_sat_minimize)
             (a, nacc, target_acc, state_based, max_states, colored);
         else
-          a = (dicho ? dtba_sat_minimize_dichotomy : dtba_sat_minimize)
+          a = (dicho ? dtba_sat_minimize_dichotomy
+              : incr1 ? dtba_sat_minimize_incr : dtba_sat_minimize)
             (a, state_based, max_states);
 
         if (!a && !user_supplied_acc)
