@@ -20,24 +20,25 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
-#include <spot/twaalgos/dtwasat.hh>
-#include <spot/twaalgos/dtbasat.hh>
 #include <map>
 #include <utility>
-#include <spot/twaalgos/sccinfo.hh>
-#include <spot/twa/bddprint.hh>
-#include <spot/twaalgos/stats.hh>
-#include <spot/tl/defaultenv.hh>
+#include <spot/misc/escape.hh>
+#include <spot/misc/optionmap.hh>
 #include <spot/misc/satsolver.hh>
 #include <spot/misc/timer.hh>
+#include <spot/tl/defaultenv.hh>
+#include <spot/twa/bddprint.hh>
+#include <spot/twaalgos/complete.hh>
+#include <spot/twaalgos/dtwasat.hh>
+#include <spot/twaalgos/dtbasat.hh>
+#include <spot/twaalgos/hoa.hh>
 #include <spot/twaalgos/isweakscc.hh>
 #include <spot/twaalgos/isdet.hh>
-#include <spot/twaalgos/dot.hh>
-#include <spot/twaalgos/complete.hh>
-#include <spot/misc/optionmap.hh>
-#include <spot/twaalgos/sccfilter.hh>
-#include <spot/twaalgos/sbacc.hh>
 #include <spot/twaalgos/postproc.hh>
+#include <spot/twaalgos/sbacc.hh>
+#include <spot/twaalgos/sccfilter.hh>
+#include <spot/twaalgos/sccinfo.hh>
+#include <spot/twaalgos/stats.hh>
 
 // If you set the SPOT_TMPKEEP environment variable the temporary
 // file used to communicate with the sat solver will be left in
@@ -64,9 +65,7 @@ namespace spot
   namespace
   {
     static bdd_dict_ptr debug_dict = nullptr;
-//#if DEBUG // This is unused in non-debug mode, this is to fix the warning
     static const acc_cond* debug_ref_acc = nullptr;
-//#endif
     static const acc_cond* debug_cand_acc = nullptr;
 
     struct transition
@@ -612,7 +611,7 @@ namespace spot
       for (auto& t: ref->edges())
         ap &= bdd_support(t.cond);
 
-      // Count the number of atomic propositions
+      // Count the number of atomic propositions.
       int nap = 0;
       {
         bdd cur = ap;
@@ -630,7 +629,7 @@ namespace spot
       // Number all the SAT variables we may need.
       unsigned ref_size = declare_vars(ref, d, ap, state_based, sm);
 
-      // Tell the satsolver the number of variables
+      // Tell the satsolver the number of variables.
       solver.adjust_nvars(d.nvars);
 
       // empty automaton is impossible
@@ -1102,6 +1101,49 @@ namespace spot
     }
   }
 
+  static void
+  print_log(timer_map& t, int target_state_number,
+            twa_graph_ptr& res, sat_stats& s)
+  {
+    // Always copy the environment variable into a static string,
+    // so that we (1) look it up once, but (2) won't crash if the
+    // environment is changed.
+    static std::string log = []()
+      {
+        auto s = getenv("SPOT_SATLOG");
+        return s ? s : "";
+      }();
+    if (!log.empty())
+      {
+        std::fstream out(log,
+                         std::ios_base::app | std::ios_base::out);
+        out.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+        const timer& te = t.timer("encode");
+        const timer& ts = t.timer("solve");
+        out << target_state_number << ',';
+        if (res)
+          {
+            twa_sub_statistics st = sub_stats_reachable(res);
+            out << st.states << ',' << st.edges << ',' << st.transitions;
+          }
+        else
+          {
+            out << ",,";
+          }
+        out << ','
+            << s.first << ',' << s.second << ','
+            << te.utime() << ',' << te.stime() << ','
+            << ts.utime() << ',' << ts.stime() << ",'";
+        if (res)
+        {
+          std::stringstream f;
+          print_hoa(f, res, "l");
+          escape_rfc4180(out, f.str());
+        }
+        out << "'\n";
+      }
+  }
+
   twa_graph_ptr
   dtwa_sat_synthetize(const const_twa_graph_ptr& a,
                       unsigned target_acc_number,
@@ -1136,39 +1178,8 @@ namespace spot
     if (!solution.second.empty())
       res = sat_build(solution.second, d, a, state_based);
 
-    // Always copy the environment variable into a static string,
-    // so that we (1) look it up once, but (2) won't crash if the
-    // environment is changed.
-    static std::string log = []()
-      {
-        auto s = getenv("SPOT_SATLOG");
-        return s ? s : "";
-      }();
-    if (!log.empty())
-      {
-        std::fstream out(log,
-                         std::ios_base::app | std::ios_base::out);
-        out.exceptions(std::ifstream::failbit | std::ifstream::badbit);
-        const timer& te = t.timer("encode");
-        const timer& ts = t.timer("solve");
-        out << target_state_number << ',';
-        if (res)
-          {
-            twa_sub_statistics st = sub_stats_reachable(res);
-            out << st.states << ',' << st.edges << ',' << st.transitions;
-          }
-        else
-          {
-            out << ",,";
-          }
-        out << ','
-            << s.first << ',' << s.second << ','
-            << te.utime() << ',' << te.stime() << ','
-            << ts.utime() << ',' << ts.stime() << '\n';
-      }
-    static bool show = getenv("SPOT_SATSHOW");
-    if (show && res)
-      print_dot(std::cout, res);
+    // Print log if env var SPOT_SATLOG is set.
+    print_log(t, target_state_number, res, s);
 
     trace << "dtwa_sat_synthetize(...) = " << res << '\n';
     return res;
@@ -1205,6 +1216,83 @@ namespace spot
 
       return lw <= rw ? left : right;
     }
+  }
+
+  twa_graph_ptr
+  dtwa_sat_minimize_incr(const const_twa_graph_ptr& a,
+                         unsigned target_acc_number,
+                         const acc_cond::acc_code& target_acc,
+                         bool state_based, int max_states,
+                         bool colored)
+  {
+    dict d(a);
+    d.cand_size = (max_states < 0) ?
+      stats_reachable(a).states - 1 : max_states;
+    d.cand_nacc = target_acc_number;
+    d.cand_acc = target_acc;
+    if (d.cand_size == 0)
+      return nullptr;
+
+    // First iteration of classic solving.
+    satsolver solver;
+    timer_map t1;
+    t1.start("encode");
+    sat_stats s = dtwa_to_sat(solver, a, d, state_based, colored);
+    t1.stop("encode");
+    t1.start("solve");
+    satsolver::solution_pair solution = solver.get_solution();
+    t1.stop("solve");
+    twa_graph_ptr next = nullptr;
+    if (!solution.second.empty())
+      next = sat_build(solution.second, d, a, state_based);
+    print_log(t1, d.cand_size, next, s); // Print log if SPOT_SATLOG is set.
+
+    // Compute the AP used in the hard way.
+    bdd ap = bddtrue;
+    for (auto& t: a->edges())
+      ap &= bdd_support(t.cond);
+
+    // Incremental solving loop.
+    twa_graph_ptr prev = nullptr;
+    unsigned cand_size = d.cand_size;
+    int k = 0; // reachable states
+    while (next)
+    {
+      timer_map t2;
+      t2.start("encode");
+      prev = next;
+      k = stats_reachable(prev).states;
+      cnf_comment("Next iteration:", k-1, "\n");
+
+      // Add new constraints.
+      for (unsigned i = k - 1; i < cand_size; ++i)
+      {
+        bdd all = bddtrue;
+        while (all != bddfalse)
+        {
+          bdd l = bdd_satoneset(all, ap, bddfalse);
+          all -= l;
+          for (unsigned j = 0; j < d.cand_size; ++j)
+          {
+            transition t(j, l, i);
+            int ti = d.transid[t];
+            solver.add({-ti, 0});
+          }
+        }
+      }
+      cand_size = k - 1;
+      s = solver.stats();
+      t2.stop("encode");
+      t2.start("solve");
+      solution = solver.get_solution();
+      t2.stop("solve");
+      next = solution.second.empty() ? nullptr :
+        sat_build(solution.second, d, prev, state_based);
+
+      // Print log if env var SPOT_SATLOG is set.
+      print_log(t2, cand_size, next, s);
+    }
+    return prev;
   }
 
   twa_graph_ptr
@@ -1287,6 +1375,7 @@ namespace spot
     auto accstr = om.get_str("acc");
     bool colored = om.get("colored", 0);
     int preproc = om.get("preproc", 3);
+    bool incr = om.get("incr", 0);
 
     // No more om.get() below this.
     om.report_unused_options();
@@ -1379,10 +1468,12 @@ namespace spot
       {
         auto orig = a;
         if (!target_is_buchi || !a->acc().is_buchi() || colored)
-          a = (dicho ? dtwa_sat_minimize_dichotomy : dtwa_sat_minimize)
+          a = (dicho ? dtwa_sat_minimize_dichotomy
+              : incr ? dtwa_sat_minimize_incr : dtwa_sat_minimize)//FIXME
             (a, nacc, target_acc, state_based, max_states, colored);
         else
-          a = (dicho ? dtba_sat_minimize_dichotomy : dtba_sat_minimize)
+          a = (dicho ? dtba_sat_minimize_dichotomy
+              : incr ? dtba_sat_minimize_incr : dtba_sat_minimize) //FIXME
             (a, state_based, max_states);
 
         if (!a && !user_supplied_acc)

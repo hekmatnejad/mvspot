@@ -24,12 +24,13 @@
 #include <spot/twaalgos/reachiter.hh>
 #include <map>
 #include <utility>
+#include <spot/twaalgos/hoa.hh>
 #include <spot/twaalgos/sccinfo.hh>
 #include <spot/twa/bddprint.hh>
 #include <spot/twaalgos/stats.hh>
+#include <spot/misc/escape.hh>
 #include <spot/misc/satsolver.hh>
 #include <spot/misc/timer.hh>
-#include <spot/twaalgos/dot.hh>
 
 // If you set the SPOT_TMPKEEP environment variable the temporary
 // file used to communicate with the sat solver will be left in
@@ -717,6 +718,49 @@ namespace spot
     }
   }
 
+  static void
+  print_log(timer_map& t, int target_state_number,
+            twa_graph_ptr& res, sat_stats& s)
+  {
+    // Always copy the environment variable into a static string,
+    // so that we (1) look it up once, but (2) won't crash if the
+    // environment is changed.
+    static std::string log = []()
+      {
+        auto s = getenv("SPOT_SATLOG");
+        return s ? s : "";
+      }();
+    if (!log.empty())
+      {
+        std::fstream out(log,
+                         std::ios_base::app | std::ios_base::out);
+        out.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+        const timer& te = t.timer("encode");
+        const timer& ts = t.timer("solve");
+        out << target_state_number << ',';
+        if (res)
+          {
+            twa_sub_statistics st = sub_stats_reachable(res);
+            out << st.states << ',' << st.edges << ',' << st.transitions;
+          }
+        else
+          {
+            out << ",,";
+          }
+        out << ','
+            << s.first << ',' << s.second << ','
+            << te.utime() << ',' << te.stime() << ','
+            << ts.utime() << ',' << ts.stime() << ",'";
+        if (res)
+        {
+          std::stringstream f;
+          print_hoa(f, res, "l");
+          escape_rfc4180(out, f.str());
+        }
+        out << "'\n";
+      }
+  }
+
   twa_graph_ptr
   dtba_sat_synthetize(const const_twa_graph_ptr& a,
                       int target_state_number, bool state_based)
@@ -746,42 +790,87 @@ namespace spot
     if (!solution.second.empty())
       res = sat_build(solution.second, d, a, state_based);
 
-    // Always copy the environment variable into a static string,
-    // so that we (1) look it up once, but (2) won't crash if the
-    // environment is changed.
-    static std::string log = []()
-      {
-        auto s = getenv("SPOT_SATLOG");
-        return s ? s : "";
-      }();
-    if (!log.empty())
-      {
-        std::fstream out(log,
-                         std::ios_base::app | std::ios_base::out);
-        out.exceptions(std::ifstream::failbit | std::ifstream::badbit);
-        const timer& te = t.timer("encode");
-        const timer& ts = t.timer("solve");
-        out << target_state_number << ',';
-        if (res)
-          {
-            twa_sub_statistics st = sub_stats_reachable(res);
-            out << st.states << ',' << st.edges << ',' << st.transitions;
-          }
-        else
-          {
-            out << ",,";
-          }
-        out << ','
-            << s.first << ',' << s.second << ','
-            << te.utime() << ',' << te.stime() << ','
-            << ts.utime() << ',' << ts.stime() << '\n';
-      }
-    static bool show = getenv("SPOT_SATSHOW");
-    if (show && res)
-      print_dot(std::cout, res);
+    // Print log if env var SPOT_SATLOG is set.
+    print_log(t, target_state_number, res, s);
 
     trace << "dtba_sat_synthetize(...) = " << res << '\n';
     return res;
+  }
+
+  twa_graph_ptr
+  dtba_sat_minimize_incr(const const_twa_graph_ptr& a,
+                         bool state_based, int max_states)
+  {
+    if (!a->acc().is_buchi())
+      throw std::runtime_error
+        ("dtba_sat_minimize_incr() can only work with Büchi acceptance");
+    dict d;
+    d.cand_size = (max_states < 0) ?
+      stats_reachable(a).states - 1 : max_states;
+    if (d.cand_size == 0)
+      return nullptr;
+
+    // First iteration of classic solving.
+    satsolver solver;
+    timer_map t1;
+    t1.start("encode");
+    sat_stats s = dtba_to_sat(solver, a, d, state_based);
+    t1.stop("encode");
+    t1.start("solve");
+    satsolver::solution_pair solution = solver.get_solution();
+    t1.stop("solve");
+    twa_graph_ptr next = nullptr;
+    if (!solution.second.empty())
+      next = sat_build(solution.second, d, a, state_based);
+    print_log(t1, d.cand_size, next, s); // Print log if SPOT_SATLOG is set.
+
+    // Compute the AP used in the hard way.
+    bdd ap = bddtrue;
+    for (auto& t: a->edges())
+      ap &= bdd_support(t.cond);
+
+    // Incremental solving loop.
+    twa_graph_ptr prev = nullptr;
+    unsigned cand_size = d.cand_size;
+    int k = 0; // Reachable states.
+    while (next)
+    {
+      timer_map t2;
+      t2.start("encode");
+      prev = next;
+      k = stats_reachable(prev).states;
+      cnf_comment("Next iteration:", k-1, "\n");
+
+      // Add new constraints.
+      for (unsigned i = k - 1; i < cand_size; ++i)
+      {
+        bdd all = bddtrue;
+        while (all != bddfalse)
+        {
+          bdd l = bdd_satoneset(all, ap, bddfalse);
+          all -= l;
+          for (unsigned j = 0; j < d.cand_size; ++j)
+          {
+            transition t(j, l, i);
+            int ti = d.transid[t];
+            solver.add({-ti, 0});
+          }
+        }
+      }
+      cand_size = k - 1;
+      s = solver.stats();
+      t2.stop("encode");
+      t2.start("solve");
+      solution = solver.get_solution();
+      t2.stop("solve");
+      next = solution.second.empty() ? nullptr :
+        sat_build(solution.second, d, prev, state_based);
+
+      // Print log if env var SPOT_SATLOG is set.
+      print_log(t2, cand_size, next, s);
+    }
+
+    return prev;
   }
 
   twa_graph_ptr
