@@ -59,11 +59,12 @@ print "\\documentclass{standalone}\n
 ";
 
 print "\\begin{document}\n";
-print "\\begin{tabular}{lrcr|r|rrrr|rrr|rr|rrr|rrr|rrrr}";
-print "\\multicolumn{24}{l}{Column \\textbf{type} shows how the initial det. aut. was obtained: T = translation produces DTGBA; W = WDBA minimization works; P = powerset construction transforms TBA to DTBA; R = DRA to DBA.}\\\\\n";
-print "\\multicolumn{24}{l}{Column \\textbf{C.} tells whether the output automaton is complete: rejecting sink states are always omitted (add 1 state when C=0 if you want the size of the complete automaton).}\\\\\n";
-print "&&&&DRA&\\multicolumn{4}{|c}{DTGBA} & \\multicolumn{3}{|c}{DBA} &  \\multicolumn{2}{|c}{DBA\\footnotesize minimizer}&  \\multicolumn{3}{|c}{min DBA} & \\multicolumn{3}{|c}{minDTBA} & \\multicolumn{4}{|c}{minDTGBA}\\\\\n";
-print "formula & \$m\$ & type & C. & st. & st. & tr. & acc. & time & st. & tr. & time & st. & time & st. & tr. & time & st. & tr. & time & st. & tr. & acc. & time \\\\\n";
+print "\\begin{tabular}{lrcr|r|rrrr|rrr|rr|rrr|rrr|rrrr|rrr|rrr|rrrr|rrr|rrr|rrrr|rrr|rrr|rrrr}";
+print "\\multicolumn{54}{l}{Column \\textbf{type} shows how the initial det. aut. was obtained: T = translation produces DTGBA; W = WDBA minimization works; P = powerset construction transforms TBA to DTBA; R = DRA to DBA.}\\\\\n";
+print "\\multicolumn{54}{l}{Column \\textbf{C.} tells whether the output automaton is complete: rejecting sink states are always omitted (add 1 state when C=0 if you want the size of the complete automaton).}\\\\\n";
+print "\\multicolumn{14}{|c}{}& \\multicolumn{10}{|c}{glu. cnf}& \\multicolumn{10}{|c}{pic. cnf}& \\multicolumn{10}{|c}{pic. lib}& \\multicolumn{10}{|c}{pic. lib incremental}\\\\\n";
+print "&&&&DRA&\\multicolumn{4}{|c}{DTGBA} & \\multicolumn{3}{|c}{DBA} &  \\multicolumn{2}{|c}{DBA\\footnotesize minimizer}&  \\multicolumn{3}{|c}{min DBA} & \\multicolumn{3}{|c}{minDTBA} & \\multicolumn{4}{|c}{minDTGBA} & \\multicolumn{3}{|c}{min DBA} & \\multicolumn{3}{|c}{minDTBA} & \\multicolumn{4}{|c}{minDTGBA} &  \\multicolumn{3}{|c}{min DBA} & \\multicolumn{3}{|c}{minDTBA} & \\multicolumn{4}{|c}{minDTGBA} &  \\multicolumn{3}{|c}{min DBA} & \\multicolumn{3}{|c}{minDTBA} & \\multicolumn{4}{|c}{minDTGBA}\\\\\n";
+print "formula& \$m\$ & type & C. & st.& st. & tr. & acc. & time & st. & tr. & time & st. & time & st. & tr. & time & st. & tr. & time & st. & tr. & acc. & time & st. & tr. & time & st. & tr. & time & st. & tr. & acc. & time & st. & tr. & time & st. & tr. & time & st. & tr. & acc. & time & st. & tr. & time & st. & tr. & time & st. & tr. & acc. & time \\\\\n";
 
 sub nonnull($)
 {
@@ -109,7 +110,7 @@ foreach my $tab (@w)
 	print "\\arrayrulecolor{lightgray}\\hline\\arrayrulecolor{black}";
     }
 
-    my $n = $tab->[52];
+    my $n = $tab->[133];
     my $f = $tab->[0];
     $f =~ s/\&/\\land /g;
     $f =~ s/\|/\\lor /g;
@@ -117,26 +118,26 @@ foreach my $tab (@w)
     $f =~ s/<->/\\leftrightarrow /g;
     $f =~ s/->/\\rightarrow /g;
     $f =~ s/[XRWMGFU]/\\$& /g;
-    print "\$$f\$\t& ";
-    print "$tab->[1] & ";
-    if ($tab->[2] =~ /trad/) { print "T & "; }
+    print "\$$f\$\t& ";                             # formula
+    print "$tab->[1] & ";                           # m
+    if ($tab->[2] =~ /trad/) { print "T & "; }      # type
     elsif ($tab->[2] =~ /TCONG/) { print "P & "; }
     elsif ($tab->[2] =~ /DRA/) { print "R & "; }
     elsif ($tab->[2] =~ /WDBA/) { print "W & "; }
     else { print "$tab->[2]& "; }
     # If one of the automata is not deterministic highlight the "Complete" column.
-    print "{\\P}" if val(8) == 0 || val(17) == 0 || val(26) == 0 || val(35) == 0  || val(44) == 0;
+    print "{\\P}" if val(8) == 0 || val(17) == 0 || val(26) == 0 || val(35) == 0  || val(44) == 0 || val(53) == 0 || val(62) == 0 || val(71) == 0 || val(80) == 0 || val(89) == 0 || val(98) == 0 || val(10) == 0 || val(107) == 0 || val(116) == 0 || val(125) == 0;
     print "$tab->[9] & ";
 
-    if ($tab->[51] =~ m:\s*n/a\s*:) #  DRA
+    if ($tab->[132] =~ m:\s*n/a\s*:) #  DRA
     {
 	print "&";
-	$tab->[51] = 0+'inf';
+	$tab->[132] = 0+'inf';
     }
     else
     {
 	# Remove sink state if not complete.
-	my $st = $tab->[51] - 1 + $tab->[9] || 1;
+	my $st = $tab->[132] - 1 + $tab->[9] || 1;
 	print "$st & ";
     }
 
@@ -162,79 +163,82 @@ foreach my $tab (@w)
 	printf("%.2f &", $tab->[19]);
     }
 
-    if ($tab->[48] =~ /\s*-\s*/) #  DBAminimizer
+    if ($tab->[129] =~ /\s*-\s*/) #  DBAminimizer
     {
 	print "\\multicolumn{2}{c|}{(killed)}&";
-	$tab->[48] = 0+'inf';
+	$tab->[129] = 0+'inf';
     }
-    elsif ($tab->[48] =~ m:\s*n/a\s*:) #  DBAminimizer
+    elsif ($tab->[129] =~ m:\s*n/a\s*:) #  DBAminimizer
     {
 	print " & &";
-	$tab->[48] = 0+'inf';
+	$tab->[129] = 0+'inf';
     }
     else
     {
 	# Remove sink state if not complete.
-	my $st = $tab->[48] - 1 + $tab->[9] || 1;
+	my $st = $tab->[129] - 1 + $tab->[9] || 1;
 	print "{\\E}" if ($st < $tab->[12]);
 	print "{\\P}" if ($st > $tab->[12]);
 	print "$st & "; # states
-	printf("%.2f &", $tab->[49]);
+	printf("%.2f &", $tab->[130]);
     }
 
-    if ($tab->[21] =~ /\s*-\s*/) #  minDBA
+    #################||    glu. cnf    ||####################
+
+    if ($tab->[21] =~ /\s*-\s*/) #  minDBA 1
     {
-	my $s = getlastsuccesful($n, "DBA");
+	my $s = getlastsuccesful($n, "DBA1");
 	print "\\multicolumn{3}{c|}{(killed$s)}&";
 	$tab->[21] = 0+'inf';
     }
-    elsif ($tab->[21] =~ /\s*!\s*/) #  minDBA
+    elsif ($tab->[21] =~ /\s*!\s*/) #  minDBA 1
     {
-	my $s = getlastsuccesful($n, "DBA");
+	my $s = getlastsuccesful($n, "DBA1");
 	print "\\multicolumn{3}{c|}{(intmax$s)}&";
 	$tab->[21] = 0+'inf';
     }
     else
     {
 	print "{\\E}" if ($tab->[21] < $tab->[12]);
-	print "{\\P}" if ($tab->[21] > $tab->[12]);
+	my $st = $tab->[129] - 1 + $tab->[9] || 1;
+	print "{\\P}" if ($tab->[21] > $tab->[12]) or ($tab->[21] > $st);
 	print "$tab->[21] & "; # states
 	print "$tab->[23] & "; # transitions
 	printf("%.2f &", $tab->[28]);
     }
 
-    if ($tab->[39] =~ /\s*-\s*/) # min DTBA
+    if ($tab->[39] =~ /\s*-\s*/) # min DTBA 1
     {
-	my $s = getlastsuccesful($n, "DTBA");
+	my $s = getlastsuccesful($n, "DTBA1");
 	print "\\multicolumn{3}{c|}{(killed$s)}&";
 	$tab->[39] = 0+'inf';
     }
-    elsif ($tab->[39] =~ /\s*!\s*/) # min DTBA
+    elsif ($tab->[39] =~ /\s*!\s*/) # min DTBA 1
     {
-	my $s = getlastsuccesful($n, "DTBA");
+	my $s = getlastsuccesful($n, "DTBA1");
 	print "\\multicolumn{3}{c|}{(intmax$s)}&";
 	$tab->[39] = 0+'inf';
     }
     else
     {
 	print "{\\E}" if ($tab->[39] < $tab->[3]);
-	print "{\\P}" if ($tab->[39] > $tab->[3] * nonnull($tab->[6])) or ($tab->[39] > $tab->[12]);
+	print "{\\P}" if ($tab->[39] > $tab->[3] * nonnull($tab->[6])) or ($tab->[39] > $tab->[12]) or ($tab->[39] > $tab->[21]);
 	print "\\textbf" if ($tab->[39] < $tab->[21]);
 	print "{$tab->[39]} & "; # states
 	print "$tab->[41] & "; # transitions
 	printf("%.2f &", $tab->[46]);
     }
 
-    if ($tab->[30] =~ /\s*-\s*/)   # minTGBA
+    if ($tab->[30] =~ /\s*-\s*/)   # minDTGBA 1
     {
-	my $s = getlastsuccesful($n, "DTGBA");
-	print "\\multicolumn{4}{c}{(killed$s)}";
+	my $s = getlastsuccesful($n, "DTGBA1");
+	print "\\multicolumn{4}{c}{(killed$s)}&";
 	$tab->[30] = 0+'inf';
     }
-    elsif ($tab->[30] =~ /\s*!\s*/)   # minTGBA
+    elsif ($tab->[30] =~ /\s*!\s*/)   # minDTGBA 1
     {
-	my $s = getlastsuccesful($n, "DTGBA");
-	print "\\multicolumn{4}{c}{(intmax$s)}";
+	my $s = getlastsuccesful($n, "DTGBA1");
+	print "\\multicolumn{4}{c}{(intmax$s)}&";
 	$tab->[30] = 0+'inf';
     }
     else
@@ -247,7 +251,220 @@ foreach my $tab (@w)
 	print "$tab->[32] & "; # transitions
 	print "\\textbf" if ($tab->[33] > $tab->[6]);
 	print "{$tab->[33]} & "; # acc
-	printf("%.2f ", $tab->[37]);
+	printf("%.2f &", $tab->[37]);
+    }
+
+    #################||    pic. cnf    ||####################
+
+    if ($tab->[48] =~ /\s*-\s*/) #  minDBA 2
+    {
+	my $s = getlastsuccesful($n, "DBA2");
+	print "\\multicolumn{3}{c|}{(killed$s)}&";
+	$tab->[48] = 0+'inf';
+    }
+    elsif ($tab->[48] =~ /\s*!\s*/) #  minDBA 2
+    {
+	my $s = getlastsuccesful($n, "DBA2");
+	print "\\multicolumn{3}{c|}{(intmax$s)}&";
+	$tab->[48] = 0+'inf';
+    }
+    else
+    {
+	print "{\\E}" if ($tab->[48] < $tab->[12]);
+	my $st = $tab->[129] - 1 + $tab->[9] || 1;
+	print "{\\P}" if ($tab->[48] > $tab->[12]) or ($tab->[48] > $st);
+	print "$tab->[48] & "; # states
+	print "$tab->[50] & "; # transitions
+	printf("%.2f &", $tab->[55]);
+    }
+
+    if ($tab->[66] =~ /\s*-\s*/) # min DTBA 2
+    {
+	my $s = getlastsuccesful($n, "DTBA2");
+	print "\\multicolumn{3}{c|}{(killed$s)}&";
+	$tab->[66] = 0+'inf';
+    }
+    elsif ($tab->[66] =~ /\s*!\s*/) # min DTBA 2
+    {
+	my $s = getlastsuccesful($n, "DTBA2");
+	print "\\multicolumn{3}{c|}{(intmax$s)}&";
+	$tab->[66] = 0+'inf';
+    }
+    else
+    {
+	print "{\\E}" if ($tab->[66] < $tab->[3]);
+	print "{\\P}" if ($tab->[66] > $tab->[3] * nonnull($tab->[6])) or ($tab->[66] > $tab->[12]) or ($tab->[66] > $tab->[48]);
+	print "\\textbf" if ($tab->[66] < $tab->[21]);
+	print "{$tab->[66]} & "; # states
+	print "$tab->[68] & "; # transitions
+	printf("%.2f &", $tab->[73]);
+    }
+
+    if ($tab->[57] =~ /\s*-\s*/)   # minDTGBA 2
+    {
+	my $s = getlastsuccesful($n, "DTGBA2");
+	print "\\multicolumn{4}{c}{(killed$s)}&";
+	$tab->[57] = 0+'inf';
+    }
+    elsif ($tab->[57] =~ /\s*!\s*/)   # minDTGBA 2
+    {
+	my $s = getlastsuccesful($n, "DTGBA2");
+	print "\\multicolumn{4}{c}{(intmax$s)}&";
+	$tab->[57] = 0+'inf';
+    }
+    else
+    {
+	print "{\\E}" if ($tab->[57] < $tab->[3]);
+	print "{\\P}" if ($tab->[57] > $tab->[3]) or ($tab->[57] > $tab->[12]) or ($tab->[57] > $tab->[48]) or ($tab->[57] > $tab->[66]);
+	print "{\\PP}" if ($tab->[48] ne 'inf' && $tab->[57] * ($tab->[60] + 1) < $tab->[48]);
+	print "\\textbf" if ($tab->[57] < $tab->[66]);
+	print "{$tab->[57]} & "; # states
+	print "$tab->[59] & "; # transitions
+	print "\\textbf" if ($tab->[60] > $tab->[6]);
+	print "{$tab->[60]} & "; # acc
+	printf("%.2f &", $tab->[64]);
+    }
+
+    #################||    pic. lib    ||####################
+
+    if ($tab->[75] =~ /\s*-\s*/) #  minDBA 3
+    {
+	my $s = getlastsuccesful($n, "DBA3");
+	print "\\multicolumn{3}{c|}{(killed$s)}&";
+	$tab->[75] = 0+'inf';
+    }
+    elsif ($tab->[75] =~ /\s*!\s*/) #  minDBA 3
+    {
+	my $s = getlastsuccesful($n, "DBA3");
+	print "\\multicolumn{3}{c|}{(intmax$s)}&";
+	$tab->[75] = 0+'inf';
+    }
+    else
+    {
+	print "{\\E}" if ($tab->[75] < $tab->[12]);
+	my $st = $tab->[129] - 1 + $tab->[9] || 1;
+	print "{\\P}" if ($tab->[75] > $tab->[12]) or ($tab->[75] > $st);
+	print "$tab->[75] & "; # states
+	print "$tab->[77] & "; # transitions
+	printf("%.2f &", $tab->[82]);
+    }
+
+    if ($tab->[93] =~ /\s*-\s*/) # min DTBA 3
+    {
+	my $s = getlastsuccesful($n, "DTBA3");
+	print "\\multicolumn{3}{c|}{(killed$s)}&";
+	$tab->[93] = 0+'inf';
+    }
+    elsif ($tab->[93] =~ /\s*!\s*/) # min DTBA 3
+    {
+	my $s = getlastsuccesful($n, "DTBA3");
+	print "\\multicolumn{3}{c|}{(intmax$s)}&";
+	$tab->[93] = 0+'inf';
+    }
+    else
+    {
+	print "{\\E}" if ($tab->[93] < $tab->[3]);
+	print "{\\P}" if ($tab->[93] > $tab->[3] * nonnull($tab->[6])) or ($tab->[93] > $tab->[12]) or ($tab->[93] > $tab->[75]);
+	print "\\textbf" if ($tab->[93] < $tab->[21]);
+	print "{$tab->[93]} & "; # states
+	print "$tab->[95] & "; # transitions
+	printf("%.2f &", $tab->[100]);
+    }
+
+    if ($tab->[84] =~ /\s*-\s*/)   # minDTGBA 3
+    {
+	my $s = getlastsuccesful($n, "DTGBA3");
+	print "\\multicolumn{4}{c}{(killed$s)}&";
+	$tab->[84] = 0+'inf';
+    }
+    elsif ($tab->[84] =~ /\s*!\s*/)   # minDTGBA 3
+    {
+	my $s = getlastsuccesful($n, "DTGBA3");
+	print "\\multicolumn{4}{c}{(intmax$s)}&";
+	$tab->[84] = 0+'inf';
+    }
+    else
+    {
+	print "{\\E}" if ($tab->[84] < $tab->[3]);
+	print "{\\P}" if ($tab->[84] > $tab->[3]) or ($tab->[84] > $tab->[12]) or ($tab->[84] > $tab->[75]) or ($tab->[84] > $tab->[93]);
+	print "{\\PP}" if ($tab->[75] ne 'inf' && $tab->[84] * ($tab->[87] + 1) < $tab->[75]);
+	print "\\textbf" if ($tab->[84] < $tab->[93]);
+	print "{$tab->[84]} & "; # states
+	print "$tab->[86] & "; # transitions
+	print "\\textbf" if ($tab->[87] > $tab->[6]);
+	print "{$tab->[87]} & "; # acc
+	printf("%.2f &", $tab->[91]);
+    }
+
+    #################||    pic. lib incr   ||####################
+
+    if ($tab->[102] =~ /\s*-\s*/) #  minDBA 4
+    {
+	my $s = getlastsuccesful($n, "DBA4");
+	print "\\multicolumn{3}{c|}{(killed$s)}&";
+	$tab->[102] = 0+'inf';
+    }
+    elsif ($tab->[102] =~ /\s*!\s*/) #  minDBA 4
+    {
+	my $s = getlastsuccesful($n, "DBA4");
+	print "\\multicolumn{3}{c|}{(intmax$s)}&";
+	$tab->[102] = 0+'inf';
+    }
+    else
+    {
+	print "{\\E}" if ($tab->[102] < $tab->[12]);
+	my $st = $tab->[129] - 1 + $tab->[9] || 1;
+	print "{\\P}" if ($tab->[102] > $tab->[12]) or ($tab->[102] > $st);
+	print "$tab->[102] & "; # states
+	print "$tab->[104] & "; # transitions
+	printf("%.2f &", $tab->[109]);
+    }
+
+    if ($tab->[120] =~ /\s*-\s*/) # min DTBA 4
+    {
+	my $s = getlastsuccesful($n, "DTBA4");
+	print "\\multicolumn{3}{c|}{(killed$s)}&";
+	$tab->[120] = 0+'inf';
+    }
+    elsif ($tab->[120] =~ /\s*!\s*/) # min DTBA 4
+    {
+	my $s = getlastsuccesful($n, "DTBA4");
+	print "\\multicolumn{3}{c|}{(intmax$s)}&";
+	$tab->[120] = 0+'inf';
+    }
+    else
+    {
+	print "{\\E}" if ($tab->[120] < $tab->[3]);
+	print "{\\P}" if ($tab->[120] > $tab->[3] * nonnull($tab->[6])) or ($tab->[120] > $tab->[12]) or ($tab->[120] > $tab->[102]);
+	print "\\textbf" if ($tab->[120] < $tab->[21]);
+	print "{$tab->[120]} & "; # states
+	print "$tab->[122] & "; # transitions
+	printf("%.2f &", $tab->[127]);
+    }
+
+    if ($tab->[111] =~ /\s*-\s*/)   # minDTGBA 4
+    {
+	my $s = getlastsuccesful($n, "DTGBA4");
+	print "\\multicolumn{4}{c}{(killed$s)}";
+	$tab->[111] = 0+'inf';
+    }
+    elsif ($tab->[111] =~ /\s*!\s*/)   # minDTGBA 4
+    {
+	my $s = getlastsuccesful($n, "DTGBA4");
+	print "\\multicolumn{4}{c}{(intmax$s)}";
+	$tab->[111] = 0+'inf';
+    }
+    else
+    {
+	print "{\\E}" if ($tab->[111] < $tab->[3]);
+	print "{\\P}" if ($tab->[111] > $tab->[3]) or ($tab->[111] > $tab->[12]) or ($tab->[111] > $tab->[102]) or ($tab->[111] > $tab->[120]);
+	print "{\\PP}" if ($tab->[102] ne 'inf' && $tab->[111] * ($tab->[114] + 1) < $tab->[102]);
+	print "\\textbf" if ($tab->[111] < $tab->[120]);
+	print "{$tab->[111]} & "; # states
+	print "$tab->[113] & "; # transitions
+	print "\\textbf" if ($tab->[114] > $tab->[6]);
+	print "{$tab->[114]} & "; # acc
+	printf("%.2f ", $tab->[118]);
     }
 
     print "\\\\\n";
