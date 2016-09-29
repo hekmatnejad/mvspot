@@ -68,6 +68,7 @@ namespace spot
         scc_filter_ = opt->get("scc-filter", -1);
         ba_simul_ = opt->get("ba-simul", -1);
         tba_determinisation_ = opt->get("tba-det", 0);
+        sat_incr_ = opt->get("sat-incr", 0);
         sat_minimize_ = opt->get("sat-minimize", 0);
         sat_acc_ = opt->get("sat-acc", 0);
         sat_states_ = opt->get("sat-states", 0);
@@ -420,9 +421,11 @@ namespace spot
               res = dtba_sat_minimize(res, state_based_);
             else if (sat_minimize_ == 2)
               res = dtba_sat_minimize_dichotomy(res, state_based_);
-            else // sat_minimize_ = 3
+            else if (sat_minimize_ == 3)
               res = dtba_sat_minimize_incr(res, state_based_);
-
+            else // if (sat_minimize_ == 4)
+              res = dtba_sat_minimize_incr2(res, state_based_, -1,
+                  sat_incr_ ? sat_incr_ : 2); // 3 ??
           }
         else
           {
@@ -441,11 +444,16 @@ namespace spot
                 (res, target_acc,
                  acc_cond::acc_code::generalized_buchi(target_acc),
                  state_based_);
-            else // sat_minimize_ = 3
+            else if (sat_minimize_ == 3)
               res = dtwa_sat_minimize_incr
                 (res, target_acc,
                  acc_cond::acc_code::generalized_buchi(target_acc),
                  state_based_);
+            else // if (sat_minimize_ == 4)
+              res = dtwa_sat_minimize_incr2
+                (res, target_acc,
+                 acc_cond::acc_code::generalized_buchi(target_acc),
+                 state_based_, -1, false, sat_incr_ ? sat_incr_ : 2); // 3 ??
           }
 
         if (res)

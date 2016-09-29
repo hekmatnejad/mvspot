@@ -1107,7 +1107,7 @@ namespace spot
 
   static void
   print_log(timer_map& t, int target_state_number,
-            twa_graph_ptr& res, sat_stats& s)
+            twa_graph_ptr& res, satsolver& solver)
   {
     // Always copy the environment variable into a static string,
     // so that we (1) look it up once, but (2) won't crash if the
@@ -1134,6 +1134,7 @@ namespace spot
           {
             out << ",,";
           }
+        sat_stats s = solver.stats();
         out << ','
             << s.first << ',' << s.second << ','
             << te.utime() << ',' << te.stime() << ','
@@ -1172,7 +1173,7 @@ namespace spot
 
     timer_map t;
     t.start("encode");
-    sat_stats s = dtwa_to_sat(solver, a, d, state_based, colored);
+    dtwa_to_sat(solver, a, d, state_based, colored);
     t.stop("encode");
     t.start("solve");
     solution = solver.get_solution();
@@ -1183,7 +1184,7 @@ namespace spot
       res = sat_build(solution.second, d, a, state_based);
 
     // Print log if env var SPOT_SATLOG is set.
-    print_log(t, target_state_number, res, s);
+    print_log(t, target_state_number, res, solver);
 
     trace << "dtwa_sat_synthetize(...) = " << res << '\n';
     return res;
@@ -1241,7 +1242,7 @@ namespace spot
     satsolver solver;
     timer_map t1;
     t1.start("encode");
-    sat_stats s = dtwa_to_sat(solver, a, d, state_based, colored);
+    dtwa_to_sat(solver, a, d, state_based, colored);
     t1.stop("encode");
     t1.start("solve");
     satsolver::solution_pair solution = solver.get_solution();
@@ -1249,7 +1250,7 @@ namespace spot
     twa_graph_ptr next = nullptr;
     if (!solution.second.empty())
       next = sat_build(solution.second, d, a, state_based);
-    print_log(t1, d.cand_size, next, s); // Print log if SPOT_SATLOG is set.
+    print_log(t1, d.cand_size, next, solver); // Print log if SPOT_SATLOG.
 
     // Compute the AP used in the hard way.
     bdd ap = bddtrue;
@@ -1285,7 +1286,6 @@ namespace spot
         }
       }
       cand_size = k - 1;
-      s = solver.stats();
       t2.stop("encode");
       t2.start("solve");
       solution = solver.get_solution();
@@ -1294,9 +1294,102 @@ namespace spot
         sat_build(solution.second, d, prev, state_based);
 
       // Print log if env var SPOT_SATLOG is set.
-      print_log(t2, cand_size, next, s);
+      print_log(t2, cand_size, next, solver);
     }
     return prev;
+  }
+
+  twa_graph_ptr
+  dtwa_sat_minimize_incr2(const const_twa_graph_ptr& a,
+                         unsigned target_acc_number,
+                         const acc_cond::acc_code& target_acc,
+                         bool state_based, int max_states,
+                         bool colored, int sat_swap)
+  {
+    const_twa_graph_ptr prev = a;
+
+    dict d(prev);
+    d.cand_size = (max_states < 0) ?
+      stats_reachable(prev).states - 1 : max_states;
+    d.cand_nacc = target_acc_number;
+    d.cand_acc = target_acc;
+    if (d.cand_size == 0)
+      return nullptr;
+
+    twa_graph_ptr next = nullptr;
+    do
+    {
+      satsolver solver;
+      // First iteration of classic solving.
+      timer_map t1;
+      t1.start("encode");
+      dtwa_to_sat(solver, prev, d, state_based, colored);
+      t1.stop("encode");
+      t1.start("solve");
+      satsolver::solution_pair solution = solver.get_solution();
+      t1.stop("solve");
+      next = solution.second.empty() ? nullptr :
+        sat_build(solution.second, d, prev, state_based);
+      print_log(t1, d.cand_size, next, solver); // Print log if SPOT_SATLOG.
+
+      // Compute the AP used in the hard way.
+      bdd ap = bddtrue;
+      for (auto& t: prev->edges())
+        ap &= bdd_support(t.cond);
+
+      // Incremental solving loop.
+      unsigned orig_cand_size = d.cand_size;
+      for (int i = 0; i < sat_swap && next; i++)
+      {
+        timer_map t2;
+        t2.start("encode");
+        prev = next;
+        int k = stats_reachable(prev).states;
+        cnf_comment("Next iteration:", k - 1, "\n");
+
+        // Add new constraints.
+        for (unsigned i = k - 1; i < d.cand_size; ++i)
+        {
+          bdd all = bddtrue;
+          while (all != bddfalse)
+          {
+            bdd l = bdd_satoneset(all, ap, bddfalse);
+            all -= l;
+            for (unsigned j = 0; j < orig_cand_size; ++j)
+            {
+              transition t(j, l, i);
+              int ti = d.transid[t];
+              solver.add({-ti, 0});
+            }
+          }
+        }
+        d.cand_size = k - 1;
+        t2.stop("encode");
+        t2.start("solve");
+        solution = solver.get_solution();
+        t2.stop("solve");
+        next = solution.second.empty() ? nullptr :
+          sat_build(solution.second, d, prev, state_based);
+
+        // Print log if env var SPOT_SATLOG is set.
+        print_log(t2, d.cand_size, next, solver);
+      }
+
+      if (next)
+      {
+        prev = next;
+        d = dict(prev);
+        d.cand_size = stats_reachable(prev).states - 1;
+        d.cand_nacc = target_acc_number;
+        d.cand_acc = target_acc;
+        if (d.cand_size == 0)
+          next = nullptr;
+      }
+
+    } while (next);
+
+    return prev == a ? nullptr
+      : std::const_pointer_cast<spot::twa_graph>(prev);
   }
 
   twa_graph_ptr
@@ -1380,6 +1473,7 @@ namespace spot
     bool colored = om.get("colored", 0);
     int preproc = om.get("preproc", 3);
     bool incr = om.get("incr", 0);
+    int incr2 = om.get("incr2", 0);
 
     // No more om.get() below this.
     om.report_unused_options();
@@ -1472,13 +1566,26 @@ namespace spot
       {
         auto orig = a;
         if (!target_is_buchi || !a->acc().is_buchi() || colored)
-          a = (dicho ? dtwa_sat_minimize_dichotomy
-              : incr ? dtwa_sat_minimize_incr : dtwa_sat_minimize)//FIXME
-            (a, nacc, target_acc, state_based, max_states, colored);
+        {
+          if (incr2)
+            a = dtwa_sat_minimize_incr2(a, nacc, target_acc, state_based,
+                max_states, colored, incr2);
+          else
+            a = (dicho ?  dtwa_sat_minimize_dichotomy
+                : incr ?  dtwa_sat_minimize_incr
+                : dtwa_sat_minimize)//FIXME
+              (a, nacc, target_acc, state_based, max_states, colored);
+        }
         else
-          a = (dicho ? dtba_sat_minimize_dichotomy
-              : incr ? dtba_sat_minimize_incr : dtba_sat_minimize) //FIXME
-            (a, state_based, max_states);
+        {
+          if (incr2)
+            a = dtba_sat_minimize_incr2(a, state_based, max_states);
+          else
+            a = (dicho ?  dtba_sat_minimize_dichotomy
+                : incr ?  dtba_sat_minimize_incr
+                : dtba_sat_minimize) //FIXME
+              (a, state_based, max_states);
+        }
 
         if (!a && !user_supplied_acc)
           a = orig;
