@@ -1123,6 +1123,89 @@ namespace spot
   }
 
   twa_graph_ptr
+  dtwa_sat_minimize_incr2(const const_twa_graph_ptr& a,
+                         unsigned target_acc_number,
+                         const acc_cond::acc_code& target_acc,
+                         bool state_based, int max_states,
+                         bool colored, int sat_swap)
+  {
+    const_twa_graph_ptr prev = a;
+
+    dict d(prev);
+    d.cand_size = (max_states < 0) ?
+      stats_reachable(prev).states - 1 : max_states;
+    d.cand_nacc = target_acc_number;
+    d.cand_acc = target_acc;
+    if (d.cand_size == 0)
+      return nullptr;
+
+    trace << "dtwa_sat_minimize_incr2(..., nacc = " << target_acc_number
+      << ", acc = \"" << target_acc << "\", states = " << d.cand_size
+      << ", state_based = " << state_based << ")\n";
+
+    twa_graph_ptr next = nullptr;
+    do
+    {
+      // First iteration of classic solving.
+      satsolver solver;
+      timer_map t1;
+      t1.start("encode");
+      dtwa_to_sat(solver, prev, d, state_based, colored);
+      t1.stop("encode");
+      t1.start("solve");
+      satsolver::solution_pair solution = solver.get_solution();
+      t1.stop("solve");
+      next = solution.second.empty() ? nullptr :
+        sat_build(solution.second, d, prev, state_based);
+      print_log(t1, d.cand_size, next, solver); // If SPOT_SATLOG is set.
+
+      // Compute the AP used.
+      bdd ap = prev->ap_vars();
+
+      // Incremental solving loop.
+      unsigned orig_cand_size = d.cand_size;
+      unsigned alpha_size = d.alpha_vect.size();
+      for (int i = 0; i < sat_swap && next; ++i)
+      {
+        t1.start("encode");
+        prev = next;
+        int reach_states = stats_reachable(prev).states;
+        cnf_comment("Next iteration:", reach_states - 1, "\n");
+
+        // Add new constraints.
+        for (unsigned i = reach_states - 1; i < d.cand_size; ++i)
+          for (unsigned l = 0; l < alpha_size; ++l)
+            for (unsigned j = 0; j < orig_cand_size; ++j)
+              solver.add({-d.transid(j, l, i), 0});
+
+        d.cand_size = reach_states - 1;
+        t1.stop("encode");
+        t1.start("solve");
+        solution = solver.get_solution();
+        t1.stop("solve");
+        next = solution.second.empty() ? nullptr :
+          sat_build(solution.second, d, prev, state_based);
+        print_log(t1, d.cand_size, next, solver); // If SPOT_SATLOG is set.
+      }
+
+      if (next)
+      {
+        prev = next;
+        d = dict(prev);
+        d.cand_size = stats_reachable(prev).states - 1;
+        d.cand_nacc = target_acc_number;
+        d.cand_acc = target_acc;
+        if (d.cand_size == 0)
+          next = nullptr;
+      }
+
+    } while (next);
+
+    return prev == a ? nullptr
+      : std::const_pointer_cast<spot::twa_graph>(prev);
+  }
+
+  twa_graph_ptr
   dtwa_sat_minimize(const const_twa_graph_ptr& a,
                     unsigned target_acc_number,
                     const acc_cond::acc_code& target_acc,
@@ -1203,6 +1286,7 @@ namespace spot
     bool colored = om.get("colored", 0);
     int preproc = om.get("preproc", 3);
     bool incr1 = om.get("incr1", 0);
+    int incr2 = om.get("incr2", 0);
 
     // No more om.get() below this.
     om.report_unused_options();
@@ -1295,13 +1379,24 @@ namespace spot
       {
         auto orig = a;
         if (!target_is_buchi || !a->acc().is_buchi() || colored)
-          a = (dicho ? dtwa_sat_minimize_dichotomy
-              : incr1 ? dtwa_sat_minimize_incr : dtwa_sat_minimize)
-            (a, nacc, target_acc, state_based, max_states, colored);
+        {
+          if (incr2)
+            a = dtwa_sat_minimize_incr2(a, nacc, target_acc, state_based,
+                max_states, colored, incr2);
+          else
+            a = (dicho ?  dtwa_sat_minimize_dichotomy
+                : incr1 ? dtwa_sat_minimize_incr : dtwa_sat_minimize)
+              (a, nacc, target_acc, state_based, max_states, colored);
+        }
         else
-          a = (dicho ? dtba_sat_minimize_dichotomy
-              : incr1 ? dtba_sat_minimize_incr : dtba_sat_minimize)
-            (a, state_based, max_states);
+        {
+          if (incr2)
+            a = dtba_sat_minimize_incr2(a, state_based, max_states, incr2);
+          else
+            a = (dicho ?  dtba_sat_minimize_dichotomy
+                : incr1 ? dtba_sat_minimize_incr : dtba_sat_minimize)
+              (a, state_based, max_states);
+        }
 
         if (!a && !user_supplied_acc)
           a = orig;
