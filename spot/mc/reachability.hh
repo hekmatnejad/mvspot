@@ -19,6 +19,7 @@
 
 #pragma once
 
+#include <functional>
 #include <spot/kripke/kripke.hh>
 
 namespace spot
