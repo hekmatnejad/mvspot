@@ -107,6 +107,9 @@ $ltlcross -F formulas \
   "{9} $ltl2tgba --det --lbtt -x 'sat-minimize=3, incr2=1' %f >%T" \
   "{10} $ltl2tgba --det --lbtt -x 'sat-minimize=3, incr2=2' %f >%T" \
   "{11} $ltl2tgba --det --lbtt -x 'sat-minimize=3, incr2=5' %f >%T" \
+  "{12} $ltl2tgba --det --lbtt -x 'sat-minimize=3, assume=1' %f >%T" \
+  "{13} $ltl2tgba --det --lbtt -x 'sat-minimize=3, assume=2' %f >%T" \
+  "{14} $ltl2tgba --det --lbtt -x 'sat-minimize=3, assume=5' %f >%T" \
   --csv=det.csv
 
 grep -v ',\"5\",' det.csv | cut -d ',' -f '1,2,6' > extracted

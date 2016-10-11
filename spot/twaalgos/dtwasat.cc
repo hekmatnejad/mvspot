@@ -533,7 +533,8 @@ namespace spot
 
     static
     sat_stats dtwa_to_sat(satsolver& solver, const_twa_graph_ptr ref,
-                           dict& d, bool state_based, bool colored)
+                           dict& d, bool state_based, bool colored,
+                           int nassume = 0)
     {
 #if DEBUG
       debug_dict = ref->get_dict();
@@ -563,7 +564,7 @@ namespace spot
       unsigned alpha_size = d.alpha_vect.size();
 
       // Tell the satsolver the number of variables.
-      solver.adjust_nvars(d.nvars);
+      solver.adjust_nvars(d.nvars, nassume);
 
       // Empty automaton is impossible.
       assert(d.cand_size > 0);
@@ -1054,6 +1055,145 @@ namespace spot
     }
   }
 
+  static twa_graph_ptr
+  dichotomy_dtwa_research(int max, dict& d, satsolver& solver,
+      timer_map& t1, const_twa_graph_ptr& prev, twa_graph_ptr& next,
+      bool state_based)
+  {
+    int min = 1;
+    twa_graph_ptr res = nullptr;
+    while (min < max)
+    {
+      int target = (max + min) / 2;
+      trace << "min<" << min << ">, max<" << max << ">, target<" << target
+        << ">, assume<" << d.nvars + target << ">\n";
+      solver.assume(d.nvars + target);
+
+      trace << "get solution\n";
+      satsolver::solution_pair solution = solver.get_solution();
+
+      if (solution.second.empty())
+      {
+        trace << "dicho UNSAT\n";
+        max = target;
+      }
+      else
+      {
+        trace << "dicho SAT\n";
+        res = sat_build(solution.second, d, prev, state_based);
+        print_log(t1, d.cand_size - target , res, solver); // SPOT_SATLOG.
+        min = d.cand_size - stats_reachable(res).states + 1;
+      }
+    }
+
+    trace << "End of dichomoty: max<" << max << ">, min<" << min << ">\n";
+    if (!res)
+    {
+      trace << "All assumptions are UNSAT, let's try without!\n";
+      satsolver::solution_pair solution = solver.get_solution();
+      res = solution.second.empty() ? nullptr :
+        sat_build(solution.second, d, prev, state_based);
+    }
+
+    t1.stop("solve");
+    return res ? res : next;
+  }
+
+  twa_graph_ptr
+  dtwa_sat_minimize_assume(const const_twa_graph_ptr& a,
+                         unsigned target_acc_number,
+                         const acc_cond::acc_code& target_acc,
+                         bool state_based, int max_states,
+                         bool colored, unsigned param)
+  {
+    const_twa_graph_ptr prev = a;
+    dict d(prev);
+    d.cand_size = (max_states < 0) ?
+      stats_reachable(prev).states - 1 : max_states;
+    d.cand_nacc = target_acc_number;
+    d.cand_acc = target_acc;
+    if (d.cand_size == 0)
+      return nullptr;
+
+    trace << "dtwa_sat_minimize_assume(..., nacc = " << target_acc_number
+      << ", acc = \"" << target_acc << "\", states = " << d.cand_size
+      << ", state_based = " << state_based << ")\n";
+
+    twa_graph_ptr next = nullptr;
+    do
+    {
+      satsolver solver;
+      int nassume_count = d.cand_size < param ? d.cand_size - 1 : param; //FIXME
+
+      timer_map t1;
+      t1.start("encode");
+      dtwa_to_sat(solver, prev, d, state_based, colored, nassume_count);
+
+      // Compute the AP used.
+      bdd ap = prev->ap_vars();
+
+      // Add next clauses that will be assumed.
+      unsigned dst = d.cand_size - 1;
+      unsigned alpha_size = d.alpha_vect.size();
+      for (int count = 1; count <= nassume_count; count++, dst--)
+      {
+        cnf_comment("Next iteration:", dst, "\n");
+        int assume_lit = d.nvars + count;
+
+        cnf_comment("Add clauses to forbid the dst state.\n");
+        for (unsigned l = 0; l < alpha_size; ++l)
+          for (unsigned j = 0; j < d.cand_size; ++j)
+          {
+            cnf_comment(assume_lit, "→ ¬", d.fmt_t(j, l, dst), '\n');
+            solver.add({-assume_lit, -d.transid(j, l, dst), 0});
+          }
+
+        cnf_comment("Implications between assuming litterals except the first"
+            " one.\n");
+        if (count != 1)
+        {
+          cnf_comment(assume_lit, "→", assume_lit - 1, '\n');
+          solver.add({-assume_lit, assume_lit - 1, 0});
+        }
+      }
+      t1.stop("encode");
+
+      t1.start("solve");
+      trace << "assume the last lit:" << d.nvars + nassume_count << '\n';
+      solver.assume(d.nvars + nassume_count);
+      trace << "get solution\n";
+      satsolver::solution_pair solution = solver.get_solution();
+
+      if (solution.second.empty()) // UNSAT
+      {
+        trace << "UNSAT, starting dichotomy\n";
+        return dichotomy_dtwa_research(nassume_count, d, solver, t1, prev,
+            next, state_based);
+      }
+
+      // SAT, so we can restart from zero!
+      t1.stop("solve");
+      next = solution.second.empty() ? nullptr :
+        sat_build(solution.second, d, prev, state_based);
+      print_log(t1, d.cand_size - nassume_count, next, solver); // SPOT_SATLOG.
+
+      if (next)
+      {
+        prev = next;
+        d = dict(prev);
+        d.cand_size = stats_reachable(prev).states - 1;
+        d.cand_nacc = target_acc_number;
+        d.cand_acc = target_acc;
+        if (d.cand_size == 0)
+          next = nullptr;
+      }
+
+    } while (next);
+
+    return prev == a ? nullptr
+      : std::const_pointer_cast<spot::twa_graph>(prev);
+  }
+
   twa_graph_ptr
   dtwa_sat_minimize_incr(const const_twa_graph_ptr& a,
                          unsigned target_acc_number,
@@ -1287,6 +1427,7 @@ namespace spot
     int preproc = om.get("preproc", 3);
     bool incr1 = om.get("incr1", 0);
     int incr2 = om.get("incr2", 0);
+    int assume = om.get("assume", 0);
 
     // No more om.get() below this.
     om.report_unused_options();
@@ -1383,6 +1524,9 @@ namespace spot
           if (incr2)
             a = dtwa_sat_minimize_incr2(a, nacc, target_acc, state_based,
                 max_states, colored, incr2);
+          else if (assume)
+            a = dtwa_sat_minimize_assume(a, nacc, target_acc, state_based,
+                max_states, colored, assume);
           else
             a = (dicho ?  dtwa_sat_minimize_dichotomy
                 : incr1 ? dtwa_sat_minimize_incr : dtwa_sat_minimize)
@@ -1392,6 +1536,8 @@ namespace spot
         {
           if (incr2)
             a = dtba_sat_minimize_incr2(a, state_based, max_states, incr2);
+          else if (assume)
+            a = dtba_sat_minimize_assume(a, state_based, max_states, assume);
           else
             a = (dicho ?  dtba_sat_minimize_dichotomy
                 : incr1 ? dtba_sat_minimize_incr : dtba_sat_minimize)

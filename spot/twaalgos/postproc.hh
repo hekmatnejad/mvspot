@@ -190,6 +190,7 @@ namespace spot
     bool tba_determinisation_ = false;
     int incr2_ = 0;
     int sat_minimize_ = 0;
+    int assume_ = 0;
     int sat_acc_ = 0;
     int sat_states_ = 0;
     bool state_based_ = false;

@@ -77,7 +77,7 @@ namespace spot
     ~satsolver();
 
     /// \brief Adjust the number of variables used in the cnf formula.
-    void adjust_nvars(int nvars);
+    void adjust_nvars(int dict_nvars, int assume_nvars);
 
     /// \brief Add many vars to the current clause and end it or not.
     void add(std::initializer_list<int> values);
@@ -114,6 +114,10 @@ namespace spot
     template<typename T, typename... Args>
     void comment(T first, Args... args);
 
+    /// \brief Assume a litteral value.
+    /// Must only be used with distributed picolib.
+    void assume(int lit);
+
     typedef std::vector<bool> solution;
     typedef std::pair<int, solution> solution_pair;
 
@@ -146,6 +150,10 @@ namespace spot
     std::ostream* cnf_stream_;
     int nclauses_;
     int nvars_;
+
+    /// \brief Number of solutions to obtain from the satsolver
+    /// (without assuming litterals).
+    int nsols_;
 
     /// \brief Picosat satsolver instance.
     PicoSAT* psat_;
