@@ -91,4 +91,17 @@ namespace spot
   dtba_sat_minimize_incr2(const const_twa_graph_ptr& a,
                     bool state_based = false,
                     int max_states = -1, int sat_swap = 2);
+
+  /// \brief Attempt to minimize a deterministic TBA incrementally with a SAT
+  /// solver.
+  ///
+  /// This acts like dtba_sat_synthetize() and obtains a first minimized
+  /// automaton. Then, incrementally, it adds more clauses and solves each
+  /// new SAT problem until the minimal automaton is found.
+  ///
+  /// If no smaller TBA exist, this returns a null pointer.
+  SPOT_API twa_graph_ptr
+  dtba_sat_minimize_incr3(const const_twa_graph_ptr& a,
+                    bool state_based = false,
+                    int max_states = -1, unsigned param = 2);
 }

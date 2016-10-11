@@ -423,8 +423,11 @@ namespace spot
               res = dtba_sat_minimize_dichotomy(res, state_based_);
             else if (sat_minimize_ == 3)
               res = dtba_sat_minimize_incr(res, state_based_);
-            else // if (sat_minimize_ == 4)
+            else if (sat_minimize_ == 4)
               res = dtba_sat_minimize_incr2(res, state_based_, -1,
+                  sat_incr_ ? sat_incr_ : 2); // 3 ??
+            else // if (sat_minimize == 5)
+              res = dtba_sat_minimize_incr3(res, state_based_, -1,
                   sat_incr_ ? sat_incr_ : 2); // 3 ??
           }
         else
@@ -449,11 +452,17 @@ namespace spot
                 (res, target_acc,
                  acc_cond::acc_code::generalized_buchi(target_acc),
                  state_based_);
-            else // if (sat_minimize_ == 4)
+            else if (sat_minimize_ == 4)
               res = dtwa_sat_minimize_incr2
                 (res, target_acc,
                  acc_cond::acc_code::generalized_buchi(target_acc),
                  state_based_, -1, false, sat_incr_ ? sat_incr_ : 2); // 3 ??
+            else // if (sat_minimize_ == 5)
+              res = dtwa_sat_minimize_incr3
+                (res, target_acc,
+                 acc_cond::acc_code::generalized_buchi(target_acc),
+                 state_based_, -1, false, sat_incr_ ? sat_incr_ : 2); // 3 ??
+
           }
 
         if (res)

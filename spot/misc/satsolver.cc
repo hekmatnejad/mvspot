@@ -73,7 +73,7 @@ namespace spot
   // easy to check if psat_ was initialized or not.
   satsolver::satsolver()
     : cnf_tmp_(nullptr), cnf_stream_(nullptr), nclauses_(0), nvars_(0),
-      psat_(nullptr)
+    nsols_(0), psat_(nullptr)
   {
     if (cmd_.command_given())
     {
@@ -119,24 +119,25 @@ namespace spot
       throw std::runtime_error("too many SAT clauses (more than INT_MAX)");
   }
 
-  void satsolver::adjust_nvars(int nvars)
+  void satsolver::adjust_nvars(int dict_nvars, int assume_nvars)
   {
-    if (nvars < 0)
+    if (dict_nvars < 0 || assume_nvars < 0)
       throw std::runtime_error("variable number must be at least 0");
 
     if (psat_)
     {
-      picosat_adjust(psat_, nvars);
+      picosat_adjust(psat_, dict_nvars + assume_nvars);
     }
     else
     {
-      if (nvars < nvars_)
+      if (dict_nvars + assume_nvars < nvars_)
       {
         throw std::runtime_error(
             "wrong number of variables, a bigger one was already added");
       }
-      nvars_ = nvars;
+      nvars_ = dict_nvars + assume_nvars;
     }
+    nsols_ = dict_nvars;
   }
 
   void satsolver::add(std::initializer_list<int> values)
@@ -195,14 +196,31 @@ namespace spot
     return std::make_pair(get_nb_vars(), get_nb_clauses());
   }
 
+  void satsolver::assume(int lit)
+  {
+    if (psat_)
+      picosat_assume(psat_, lit);
+    else
+      throw std::runtime_error(
+          "can't assume anything in the current solving mode.");
+  }
+
+  int satsolver::failed_assumption(int lit)
+  {
+    if (psat_)
+      return picosat_failed_assumption(psat_, lit);
+    else
+      throw std::runtime_error(
+          "can't assume anything in the current solving mode.");
+  }
+
   satsolver::solution
   satsolver::picosat_get_solution(int res)
   {
     satsolver::solution sol;
     if (res == PICOSAT_SATISFIABLE)
     {
-      int nvars = get_nb_vars();
-      for (int lit = 1; lit <= nvars; ++lit)
+      for (int lit = 1; lit <= nsols_; ++lit)
       {
         if (picosat_deref(psat_, lit) > 0)
           sol.push_back(lit);

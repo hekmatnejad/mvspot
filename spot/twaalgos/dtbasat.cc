@@ -299,7 +299,7 @@ namespace spot
     static
     sat_stats dtba_to_sat(satsolver& solver,
                           const const_twa_graph_ptr& ref,
-                          dict& d, bool state_based)
+                          dict& d, bool state_based, int nassume = 0)
     {
       // Compute the AP used in the hard way.
       bdd ap = bddtrue;
@@ -324,7 +324,7 @@ namespace spot
       unsigned ref_size = declare_vars(ref, d, ap, state_based, sm);
 
       // Tell the satsolver the number of variables
-      solver.adjust_nvars(d.nvars);
+      solver.adjust_nvars(d.nvars, nassume);
 
       // empty automaton is impossible
       assert(d.cand_size > 0);
@@ -960,6 +960,103 @@ namespace spot
     } while (next);
 
     return std::const_pointer_cast<spot::twa_graph>(prev);
+  }
+
+  twa_graph_ptr
+  dtba_sat_minimize_incr3(const const_twa_graph_ptr& a,
+      bool state_based, int max_states, unsigned param)
+  {
+    trace << "dtba_sat_minimize_incr3" << std::endl;
+    if (!a->acc().is_buchi())
+      throw std::runtime_error
+        ("dtba_sat_minimize_incr() can only work with Büchi acceptance");
+    const_twa_graph_ptr prev = a;
+    dict d;
+    d.cand_size = (max_states < 0) ?
+      stats_reachable(prev).states - 1 : max_states;
+    if (d.cand_size == 0)
+      return nullptr;
+
+    twa_graph_ptr next = nullptr;
+    do
+    {
+      satsolver solver;
+      timer_map t1;
+      int nassume_count = d.cand_size < param ? d.cand_size : param;
+      t1.start("encode");
+      dtba_to_sat(solver, prev, d, state_based);
+
+      // Compute the AP used in the hard way.
+      bdd ap = prev->ap_vars();
+
+      // Add next clauses that will be assumed.
+      unsigned dst = d.cand_size - 1;
+      for (int count = 1; count <= nassume_count; count++, dst--)
+      {
+        cnf_comment("Next iteration:", dst, "\n");
+
+        int assume_lit = d.nvars + count;
+        bdd all = bddtrue;
+        while (all != bddfalse)
+        {
+          bdd l = bdd_satoneset(all, ap, bddfalse);
+          all -= l;
+          for (unsigned j = 0; j < d.cand_size; ++j)
+          {
+            transition t(j, l, dst);
+            int ti = d.transid[t];
+            solver.add({-assume_lit, -ti, 0});
+          }
+        }
+
+        // Implications between assuming litterals except the first one.
+        if (count != 1)
+          solver.add ({-assume_lit, assume_lit - 1, 0});
+
+      }
+
+      // First, we assume every new litteral (depends on param).
+      for (int i = 1; i <= nassume_count; ++i)
+        solver.assume(d.nvars + i);
+
+      t1.stop("encode");
+
+      // First solving.
+      t1.start("solve");
+      satsolver::solution_pair solution = solver.get_solution();
+
+      if (solution.second.empty()) // UNSAT
+      {
+        for (int i = nassume_count; i > 0; --i)
+        {
+          if (!solver.failed_assumption(d.nvars + i))
+          {
+            // We found the right assumption, we can assume it.
+            solver.assume(d.nvars + i);
+            solution = solver.get_solution();
+            break;
+          }
+        }
+      }
+      t1.stop("solve");
+      next = solution.second.empty() ? nullptr :
+        sat_build(solution.second, d, prev, state_based);
+
+      print_log(t1, d.cand_size, next, solver); // Print log if SPOT_SATLOG.
+
+      if (next)
+      {
+        prev = next;
+        d = dict();
+        d.cand_size = stats_reachable(prev).states - 1;
+        if (d.cand_size == 0)
+          next = nullptr;
+      }
+
+    } while (next);
+
+    return prev == a ? nullptr :
+      std::const_pointer_cast<spot::twa_graph>(prev);
   }
 
   twa_graph_ptr

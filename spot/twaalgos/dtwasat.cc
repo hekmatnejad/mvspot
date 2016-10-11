@@ -600,7 +600,8 @@ namespace spot
 
     static
     sat_stats dtwa_to_sat(satsolver& solver, const_twa_graph_ptr ref,
-                           dict& d, bool state_based, bool colored)
+                           dict& d, bool state_based, bool colored,
+                           int nassume = 0)
     {
 #if DEBUG
       debug_dict = ref->get_dict();
@@ -630,7 +631,7 @@ namespace spot
       unsigned ref_size = declare_vars(ref, d, ap, state_based, sm);
 
       // Tell the satsolver the number of variables.
-      solver.adjust_nvars(d.nvars);
+      solver.adjust_nvars(d.nvars, nassume);
 
       // empty automaton is impossible
       assert(d.cand_size > 0);
@@ -1393,6 +1394,128 @@ namespace spot
   }
 
   twa_graph_ptr
+  dtwa_sat_minimize_incr3(const const_twa_graph_ptr& a,
+                         unsigned target_acc_number,
+                         const acc_cond::acc_code& target_acc,
+                         bool state_based, int max_states,
+                         bool colored, unsigned param)
+  {
+    trace << "dtwa_sat_minimize_incr3" << std::endl;
+    const_twa_graph_ptr prev = a;
+
+    dict d(prev);
+    d.cand_size = (max_states < 0) ?
+      stats_reachable(prev).states - 1 : max_states;
+    d.cand_nacc = target_acc_number;
+    d.cand_acc = target_acc;
+    if (d.cand_size == 0)
+      return nullptr;
+
+    twa_graph_ptr next = nullptr;
+    do
+    {
+      satsolver solver;
+      timer_map t1;
+      int nassume_count = d.cand_size < param ? d.cand_size - 1 : param;
+      trace << "nasume_count: " << nassume_count << std::endl;
+      t1.start("encode");
+      dtwa_to_sat(solver, prev, d, state_based, colored, nassume_count);
+
+      // Compute the AP used in the hard way.
+      bdd ap = prev->ap_vars();
+
+      // Add next clauses that will be assumed.
+      unsigned dst = d.cand_size - 1;
+      trace << "CAND_SIZE: " << d.cand_size << std::endl;
+      for (int count = 1;
+           count <= nassume_count; count++, dst--)
+      {
+        cnf_comment("Next iteration:", dst, "\n");
+
+        int assume_lit = d.nvars + count;
+        trace << "count: " << count << ", assume_lit: " << assume_lit
+          << std::endl;
+        bdd all = bddtrue;
+        while (all != bddfalse)
+        {
+          bdd l = bdd_satoneset(all, ap, bddfalse);
+          all -= l;
+          for (unsigned j = 0; j < d.cand_size; ++j)
+          {
+            transition t(j, l, dst);
+            int ti = d.transid[t];
+            solver.add({-assume_lit, -ti, 0});
+            trace << -assume_lit << ' ' << -ti << ' ' << 0 << " ==> for <"
+              << j << ", " << l << ", " << dst << '>' << std::endl;
+          }
+        }
+        // Implications between assuming litterals except the first one.
+        if (count != 1)
+        {
+          trace << "implication: " << -assume_lit << ' '
+            << assume_lit - 1 << std::endl;
+          solver.add({-assume_lit, assume_lit - 1, 0});
+        }
+
+      }
+
+      // First, we assume every new litteral (depends on param).
+      for (int i = 1; i <= nassume_count; i++)
+      {
+        trace << "assume " << d.nvars + i << std::endl;
+        solver.assume(d.nvars + i);
+      }
+
+      t1.stop("encode");
+
+      // First solving.
+      t1.start("solve");
+      trace << "get solution" << std::endl;
+      satsolver::solution_pair solution = solver.get_solution();
+
+      if (solution.second.empty()) // UNSAT
+      {
+        trace << "UNSAT" << std::endl;
+        for (int i = nassume_count; i > 0; --i)
+        {
+          trace << "check :" << d.nvars + i << std::endl;
+          if (!solver.failed_assumption(d.nvars + i))
+          {
+            trace << "found :" << d.nvars + i << " ==> we assume "
+              << d.nvars + i<< std::endl;
+            // We found the right assumption, we can assume it.
+            trace << "assume " << d.nvars + i << std::endl;
+            solver.assume(d.nvars + i);
+            trace << "get solution" << std::endl;
+            solution = solver.get_solution();
+            break;
+          }
+        }
+      }
+      t1.stop("solve");
+      next = solution.second.empty() ? nullptr :
+        sat_build(solution.second, d, prev, state_based);
+
+      print_log(t1, d.cand_size, next, solver); // Print log if SPOT_SATLOG.
+
+      if (next)
+      {
+        prev = next;
+        d = dict(prev);
+        d.cand_size = stats_reachable(prev).states - 1;
+        d.cand_nacc = target_acc_number;
+        d.cand_acc = target_acc;
+        if (d.cand_size == 0)
+          next = nullptr;
+      }
+
+    } while (next);
+
+    return prev == a ? nullptr
+      : std::const_pointer_cast<spot::twa_graph>(prev);
+  }
+
+  twa_graph_ptr
   dtwa_sat_minimize(const const_twa_graph_ptr& a,
                     unsigned target_acc_number,
                     const acc_cond::acc_code& target_acc,
@@ -1474,6 +1597,7 @@ namespace spot
     int preproc = om.get("preproc", 3);
     bool incr = om.get("incr", 0);
     int incr2 = om.get("incr2", 0);
+    int incr3 = om.get("incr3", 0);
 
     // No more om.get() below this.
     om.report_unused_options();
@@ -1570,6 +1694,9 @@ namespace spot
           if (incr2)
             a = dtwa_sat_minimize_incr2(a, nacc, target_acc, state_based,
                 max_states, colored, incr2);
+          else if (incr3)
+            a = dtwa_sat_minimize_incr3(a, nacc, target_acc, state_based,
+                max_states, colored, incr3);
           else
             a = (dicho ?  dtwa_sat_minimize_dichotomy
                 : incr ?  dtwa_sat_minimize_incr
@@ -1579,7 +1706,9 @@ namespace spot
         else
         {
           if (incr2)
-            a = dtba_sat_minimize_incr2(a, state_based, max_states);
+            a = dtba_sat_minimize_incr2(a, state_based, max_states, incr2);
+          else if (incr3)
+            a = dtba_sat_minimize_incr3(a, state_based, max_states, incr3);
           else
             a = (dicho ?  dtba_sat_minimize_dichotomy
                 : incr ?  dtba_sat_minimize_incr
