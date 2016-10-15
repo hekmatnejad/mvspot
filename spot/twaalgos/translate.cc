@@ -20,14 +20,54 @@
 #include <spot/twaalgos/translate.hh>
 #include <spot/twaalgos/ltl2tgba_fm.hh>
 #include <spot/twaalgos/compsusp.hh>
+#include <spot/twaalgos/product.hh>
+#include <spot/twaalgos/parity.hh>
 #include <spot/misc/optionmap.hh>
 
 namespace spot
 {
+namespace
+{
+  inline twa_graph_ptr product_aux(const const_twa_graph_ptr& left,
+                                   const const_twa_graph_ptr& right,
+                                   bool)
+  {
+    return product(left, right);
+  }
 
+  inline twa_graph_ptr product_or_aux(const const_twa_graph_ptr& left,
+                                      const const_twa_graph_ptr& right,
+                                      bool)
+  {
+    return product_or(left, right);
+  }
+
+  template<typename T, typename U>
+  twa_graph_ptr make_product(translator& translator, formula* f,
+                             T product, U product_or)
+  {
+    if (!f->is(op::Or) && !f->is(op::And))
+      return nullptr;
+    twa_graph_ptr r = nullptr;
+    for (const auto& node: *f)
+      {
+        auto translation = translator.run(formula(node));
+        if (r)
+          {
+            if (f->is(op::Or))
+              r = product_or(r, translation, true);
+            else
+              r = product(r, translation, true);
+          }
+        else
+          r = translation;
+      }
+    return r;
+  }
+}
   void translator::setup_opt(const option_map* opt)
   {
-    comp_susp_ = early_susp_ = skel_wdba_ = skel_simul_ = 0;
+    split_ = split_parity_ = comp_susp_ = early_susp_ = skel_wdba_ = skel_simul_ = 0;
 
     if (!opt)
       return;
@@ -39,6 +79,12 @@ namespace spot
         skel_wdba_ = opt->get("skel-wdba", -1);
         skel_simul_ = opt->get("skel-simul", 1);
       }
+    split_ = opt->get("split", 0);
+    split_parity_ = opt->get("split-parity", 0);
+    if (split_ > 0 && split_parity_ > 0)
+      throw new std::invalid_argument("translate: split and split-parity "
+                                      "are simultaneously activated");
+
   }
 
   void translator::build_simplifier(const bdd_dict_ptr& dict)
@@ -98,6 +144,21 @@ namespace spot
                              unambiguous);
       }
     aut = this->postprocessor::run(aut, r);
+    if (!f->is_syntactic_obligation())
+      {
+        twa_graph_ptr product_aut = nullptr;
+        if (split_ > 0)
+          product_aut = make_product(*this, f, product_aux, product_or_aux);
+        else if (split_parity_ > 0)
+          product_aut = make_product(*this, f, parity_product,
+                                     parity_product_or);
+        if (product_aut)
+          {
+            product_aut = this->postprocessor::run(product_aut, r);
+            if (product_aut->num_states() < aut->num_states())
+              return product_aut;
+          }
+      }
     return aut;
   }
 
@@ -105,5 +166,4 @@ namespace spot
   {
     return run(&f);
   }
-
 }
