@@ -178,6 +178,15 @@ namespace spot
     }
   }
 
+  void satsolver::set(int lit, int phase)
+  {
+    if (psat_)
+      picosat_set_default_phase_lit(psat_, lit, phase);
+    else
+      throw std::runtime_error(
+          "satsolver::set must only be used with distributed picosat");
+  }
+
   int satsolver::get_nb_clauses() const
   {
     if (psat_)

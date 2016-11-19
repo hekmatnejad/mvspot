@@ -141,6 +141,29 @@ namespace spot
   }
 
   void
+  vars_helper::set_all_trans_to_false(satsolver& solver)
+  {
+    print_debug << "set_all_trans(solver)\n";
+    for (int min_t = min_t_; min_t < min_ta_; ++min_t)
+      solver.set(min_t, -1); // -1 : set litteral to false.
+  }
+
+  bool
+  should_set()
+  {
+    // Always copy the environment variable into a static string,
+    // so that we (1) look it up once, but (2) won't crash if the
+    // environment is changed.
+    static std::string log = []()
+      {
+        auto s = getenv("SPOT_SATSETLIT");
+        return s ? s : "";
+      }();
+    print_debug << (!log.empty() ? "YES should_set" : "NO should_not_set");
+    return (!log.empty());
+  }
+
+  void
   print_log(timer_map& t, int target_state_number,
             twa_graph_ptr& res, satsolver& solver)
   {
