@@ -228,7 +228,15 @@ public:
     std::string
     format_p(unsigned src_cand, unsigned src_ref, unsigned dst_cand,
         unsigned dst_ref);
+
+    /// \brief Set all trans litteral to false.
+    void
+    set_all_trans_to_false(satsolver& solver);
   };
+
+  /// \brief Return true if "SPOT_SATSETLIT" env var is set. False otherwise.
+  bool
+  should_set();
 
   /// \brief Good old function that prints log is SPOT_SATLOG. It has been
   /// moved from spot/twaalgos/dt*asat.cc files.

@@ -861,6 +861,8 @@ namespace spot
                   }
             }
         }
+      if (should_set())
+        d.helper.set_all_trans_to_false(solver);
       return solver.stats();
     }
 

@@ -85,6 +85,10 @@ namespace spot
     /// \brief Add a var to the current clause and end it or not.
     void add(int v);
 
+    /// \brief Set phase of a particular variable if picked as decision
+    /// variable. negative=false | positive = true | 0 = default (Jeroslow-Wang)
+    void set(int lit, int phase);
+
     /// \brief Get the current number of clauses.
     int get_nb_clauses() const;
 
