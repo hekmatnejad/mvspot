@@ -24,6 +24,8 @@
 #include <spot/mc/reachability.hh>
 #include <spot/misc/timer.hh>
 
+#include <bricks/brick-hashset.h>
+#include <atomic>
 
 namespace spot
 {
@@ -40,10 +42,11 @@ namespace spot
                 std::function<bool(const State)> count_valid_fun,
                 std::function<int(State)>  get_depth,
                 std::function<int(State)>  get_pos,
-                unsigned id)
+                unsigned id,
+                unsigned tid)
       : seq_reach_kripke<State, SuccIterator, StateHash, StateEqual,
                          count_valid<State, SuccIterator,
-                                     StateHash, StateEqual>>(sys),
+                                     StateHash, StateEqual>>(sys, tid),
       new_initial_(new_initial), count_valid_fun_(count_valid_fun),
       get_depth_(get_depth), get_pos_(get_pos), id_(id)
       {
@@ -58,19 +61,18 @@ namespace spot
     {
     }
 
-    void push(State st, unsigned int dfsnum)
+    bool push(State st, unsigned int dfsnum)
     {
-      if (dfsnum == 1)
+      if (dfsnum == 0)
         {
           // Here Hack the reachability to specify startup
-          this->visited.erase(st);
-          this->sys_.recycle(this->todo.back().it);
-          this->todo.pop_back();
-          this->todo.push_back({new_initial_, this->sys_.succ(new_initial_)});
+          this->todo.push_back({new_initial_,
+                this->sys_.succ(new_initial_, 0 /*FIXME*/ )});
           this->visited[new_initial_] = this->dfs_number;
+          this->dfs_number = 1;
           if (count_valid_fun_(new_initial_))
             ++counter_;
-          return;
+          return true;
         }
 
       if (count_valid_fun_(st))
@@ -82,6 +84,12 @@ namespace spot
               first_pos_ = get_pos_(st);
             }
         }
+      return true;
+    }
+
+    bool pop(State)
+    {
+      return true;
     }
 
     void edge(unsigned int, unsigned int)
@@ -110,6 +118,87 @@ namespace spot
   };
 
 
+
+  template<typename State, typename SuccIterator,
+           typename StateHash, typename StateEqual>
+  class swarmed_dfs  : public seq_reach_kripke<State, SuccIterator,
+                                       StateHash, StateEqual,
+                                       swarmed_dfs<State, SuccIterator,
+                                                        StateHash, StateEqual>>
+  {
+
+    enum st_status     // Describe the status of a state
+      {
+        OPEN = 0,      // The state is currently processed by a thread
+        CLOSED = 1     // All the successors of this state have been visited
+      };
+
+  public:
+    swarmed_dfs(kripkecube<State, SuccIterator>& sys,
+                brick::hashset::FastConcurrent
+                <std::pair<State, std::atomic<int>>,
+                StateHash>& map, unsigned tid)
+      : seq_reach_kripke<State, SuccIterator, StateHash, StateEqual,
+                         swarmed_dfs<State, SuccIterator,
+                                     StateHash, StateEqual>>(sys, tid),
+      tid_(tid), map_(map)
+      {
+      }
+
+    virtual ~swarmed_dfs()
+    {
+    }
+
+    void setup()
+    {
+      tm_.start("DFS thread " + std::string(tid_));
+    }
+
+    bool push(State s, unsigned int)
+    {
+      auto it = map_->insert({s, OPEN});
+
+      // State has been marked as dead by another thread
+      // just skip the insertion
+      if (!it.isnew() && *it.second == CLOSED)
+        return false; // FIXME
+      return true;
+    }
+
+    bool pop(State s)
+    {
+      // Don't avoid pop but modify the status of the state
+      // during backtrack
+      auto it = map_->insert({s, OPEN});
+      *it.second = CLOSED;
+      return true;
+    }
+
+    void edge(unsigned int, unsigned int)
+    {
+    }
+
+    void finalize()
+    {
+      tm_.stop("DFS thread " + std::string(tid_));
+    }
+
+  private:
+    spot::timer_map tm_;
+    unsigned tid_; // FIXME
+    brick::hashset::FastConcurrent<std::pair<State, std::atomic<int>>,
+                                   StateHash>& map_;
+  };
+
+
+
+
+
+
+
+
+
+
   template<typename State, typename SuccIterator,
            typename StateHash, typename StateEqual>
   class interpolate  : public seq_reach_kripke<State, SuccIterator,
@@ -120,10 +209,11 @@ namespace spot
   public:
     interpolate(kripkecube<State, SuccIterator>& sys,
         std::function<void(State, unsigned int)> display,
-        std::function<std::vector<State>*(std::vector<State>&)> interpolate_fun)
+        std::function<std::vector<State>*(std::vector<State>&)> interpolate_fun,
+        unsigned tid)
       : seq_reach_kripke<State, SuccIterator, StateHash, StateEqual,
                          interpolate<State, SuccIterator,
-                                     StateHash, StateEqual>>(sys),
+                                     StateHash, StateEqual>>(sys, tid),
       display_(display), interpolate_fun_(interpolate_fun)
       {
         (void) display;
@@ -139,13 +229,20 @@ namespace spot
       tm_.start("original DFS");
     }
 
-    void push(State st, unsigned int dfsnum)
+    bool push(State st, unsigned int dfsnum)
     {
       if (dfsnum <= 150) // FIXME threshold
         sample_.push_back(st);
 
       depth.insert({st, (int) this->todo.size()});
       dfspos.insert({st, (int) this->dfs_number});
+
+      return true;
+    }
+
+    bool pop(State)
+    {
+      return true;
     }
 
     void edge(unsigned int, unsigned int)
@@ -182,7 +279,8 @@ namespace spot
                {
                  return dfspos[s];
                },
-               i
+               i,
+               0 /* FIXME tid */
                );
           tm_.start("Element " + std::to_string(i));
           cv.run();
@@ -195,6 +293,13 @@ namespace spot
         }
       //      tm_.print(std::cout);
       delete gen;
+
+
+      brick::hashset::FastConcurrent<std::pair<State, std::atomic<int>>,
+                                     StateHash> map;
+      swarmed_dfs<State, SuccIterator, StateHash, StateEqual>
+        cv(this->sys_, map, 0);
+      (void) cv;
     }
 
   private:
@@ -206,7 +311,5 @@ namespace spot
                                StateHash, StateEqual> visited_map;
     visited_map depth;
     visited_map dfspos;
-
   };
-
 }

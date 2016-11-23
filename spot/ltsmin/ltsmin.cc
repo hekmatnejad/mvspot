@@ -1520,6 +1520,20 @@ namespace spot
       return nb_threads_;
     }
 
+    const spot::spins_interface* spins_interface()
+    {
+      return d_;
+    }
+
+    bool compress()
+    {
+      return compress_;
+    }
+    cspins_state_manager& manager(unsigned i)
+    {
+      return manager_[i];
+    }
+
   private:
     // The two followings functions are too big  to be inlined in
     // this class. See below for more details
@@ -2239,7 +2253,7 @@ namespace spot
     splitter_.push_back(d_->get_state_size()); // FIXME
 
 
-    auto manager_ = sys->manager();
+    auto manager_ = sys->manager( 0 /*FIXME for multithread*/);
 
     // FIXME when multiple threads
     int* uncompressed_ = new int[d_->get_state_size()+30];
@@ -2267,7 +2281,8 @@ namespace spot
                   {
                     return  interpolate_states(cs, manager_, sys, d_,
                                                splitter_);
-                  }
+                  },
+                  0 /* FIXME tid */
                   );
     interpolate.run();
     delete[] uncompressed_;
