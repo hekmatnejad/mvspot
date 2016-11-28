@@ -1063,10 +1063,11 @@ namespace spot
       bool state_based)
   {
     int min = 1;
+    int target = 0;
     twa_graph_ptr res = nullptr;
     while (min < max)
     {
-      int target = (max + min) / 2;
+      target = (max + min) / 2;
       trace << "min<" << min << ">, max<" << max << ">, target<" << target
         << ">, assume<" << d.nvars + target << ">\n";
       solver.assume(d.nvars + target);
@@ -1083,7 +1084,6 @@ namespace spot
       {
         trace << "dicho SAT\n";
         res = sat_build(solution.second, d, prev, state_based);
-        print_log(t1, d.cand_size - target , res, solver); // SPOT_SATLOG.
         min = d.cand_size - stats_reachable(res).states + 1;
       }
     }
@@ -1098,6 +1098,7 @@ namespace spot
     }
 
     t1.stop("solve");
+    print_log(t1, d.cand_size - target , res, solver); // SPOT_SATLOG.
     return res ? res : next;
   }
 
