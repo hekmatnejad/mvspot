@@ -1422,7 +1422,6 @@ namespace spot
         compress_(compress), cubeset_(visible_aps.size()),
         selfloopize_(selfloopize), aps_(visible_aps), nb_threads_(nb_threads)
     {
-      map_.initialSize(2000000);
       manager_ = static_cast<cspins_state_manager*>
         (::operator new(sizeof(cspins_state_manager) * nb_threads));
       inner_ = new inner_callback_parameters[nb_threads_];
@@ -2304,7 +2303,6 @@ namespace spot
 
     // The shared map among all threads
     algo_name::shared_map map;
-    map.setSize(2000000);
 
     tm.start("Initialisation");
     std::vector<algo_name> swarmed;
@@ -2395,7 +2393,6 @@ namespace spot
       spot::swarmed_gp<cspins_state, cspins_iterator,
                            cspins_state_hash, cspins_state_equal>;
     algo_name::shared_map map;
-    map.setSize(2000000);
 
     std::vector<algo_name> swarmed;
     tm.start("Initialisation");

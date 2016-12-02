@@ -24,7 +24,7 @@
 #include <spot/mc/reachability.hh>
 #include <spot/misc/timer.hh>
 
-#include <bricks/brick-hashset.h>
+#include <bricks/brick-hashset>
 #include <atomic>
 
 namespace spot
@@ -72,7 +72,7 @@ namespace spot
           this->dfs_number = 1;
           if (count_valid_fun_(new_initial_))
             ++counter_;
-          return true;
+          return false;
         }
 
       if (count_valid_fun_(st))
