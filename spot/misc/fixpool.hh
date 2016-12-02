@@ -24,6 +24,10 @@
 #include <cstddef>
 #include <cstdlib>
 
+#ifdef VALGRIND
+#include <valgrind/memcheck.h>
+#endif
+
 namespace spot
 {
 
@@ -39,17 +43,24 @@ namespace spot
       const size_t alignement = 2 * sizeof(size_t);
       size_ = ((size >= sizeof(block_) ? size : sizeof(block_))
                + alignement - 1) & ~(alignement - 1);
+#ifdef VALGRIND
+      VALGRIND_CREATE_MEMPOOL(this, 0, false);
+#endif
     }
 
     /// Free any memory allocated by this pool.
     ~fixed_size_pool()
     {
+      VALGRIND_DO_LEAK_CHECK;
       while (chunklist_)
         {
           chunk_* prev = chunklist_->prev;
           free(chunklist_);
           chunklist_ = prev;
         }
+#ifdef VALGRIND
+      VALGRIND_DESTROY_MEMPOOL(this);
+#endif
     }
 
     /// Allocate \a size bytes of memory.
@@ -61,6 +72,10 @@ namespace spot
       if (f)
         {
           freelist_ = f->next;
+#ifdef VALGRIND
+          VALGRIND_MAKE_MEM_NOACCESS(&f->next, sizeof(f->next));
+          VALGRIND_MEMPOOL_ALLOC(this, f, size_);
+#endif
           return f;
         }
 
@@ -79,10 +94,16 @@ namespace spot
 
           free_start_ = c->data_ + size_;
           free_end_ = c->data_ + requested;
+#ifdef VALGRIND
+          VALGRIND_MAKE_MEM_NOACCESS(free_start_, free_end_ - free_start_);
+#endif
         }
 
       void* res = free_start_;
       free_start_ += size_;
+#ifdef VALGRIND
+      VALGRIND_MEMPOOL_ALLOC(this, res, size_);
+#endif
       return res;
     }
 
@@ -96,7 +117,13 @@ namespace spot
     deallocate (const void* ptr)
     {
       SPOT_ASSERT(ptr);
+#ifdef VALGRIND
+      VALGRIND_MEMPOOL_FREE(this, ptr);
+#endif
       block_* b = reinterpret_cast<block_*>(const_cast<void*>(ptr));
+#ifdef VALGRIND
+      VALGRIND_MAKE_MEM_UNDEFINED(&b->next, sizeof(b->next));
+#endif
       b->next = freelist_;
       freelist_ = b;
     }
