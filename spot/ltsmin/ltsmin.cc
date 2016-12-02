@@ -2298,13 +2298,13 @@ namespace spot
     name = name.substr(name.find_last_of("/")+1);
     spot::timer_map tm;
 
-    // The shared map among all threads
-    spot::swarmed_dfs<cspins_state, cspins_iterator,
-                      cspins_state_hash, cspins_state_equal>::shared_map map;
-
     bool stop = false;
     using algo_name = spot::swarmed_dfs<cspins_state, cspins_iterator,
                                         cspins_state_hash, cspins_state_equal>;
+
+    // The shared map among all threads
+    algo_name::shared_map map;
+    map.setSize(2000000);
 
     tm.start("Initialisation");
     std::vector<algo_name> swarmed;
@@ -2395,6 +2395,7 @@ namespace spot
       spot::swarmed_gp<cspins_state, cspins_iterator,
                            cspins_state_hash, cspins_state_equal>;
     algo_name::shared_map map;
+    map.setSize(2000000);
 
     std::vector<algo_name> swarmed;
     tm.start("Initialisation");
