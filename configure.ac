@@ -120,6 +120,21 @@ link_all_deplibs_CXX=yes
 
 AX_BSYMBOLIC
 
+AC_ARG_ENABLE([valgrind],
+              [AC_HELP_STRING([--enable-valgrind],
+                              [tell valgrind about memory pools])],
+              [], [enable_valgrind=yes])
+case $enable_devel:$enable_valgrind in
+  yes:*)
+      enable_valgrind=yes
+      AC_MSG_NOTICE([Enable valgrind in devel mode.])
+esac
+if test "x${enable_valgrind:-yes}" = xyes; then
+  AC_CHECK_HEADER([valgrind/memcheck.h], [CXXFLAGS="$CXXFLAGS -DVALGRIND"],
+            [AC_MSG_NOTICE([Valgrind headers not found, disabling valgrind]);
+            enable_valgrind=no])
+fi
+
 AC_ARG_ENABLE([python],
               [AC_HELP_STRING([--disable-python],
                               [do not compile Python bindings])],
