@@ -81,6 +81,7 @@ check_PROGRAMS = \
   core/ltl2text \
   core/ltlrel \
   core/lunabbrev \
+  core/mempool \
   core/nequals \
   core/nenoform \
   core/ngraph \
@@ -111,6 +112,7 @@ core_intvcomp_SOURCES = core/intvcomp.cc
 core_intvcmp2_SOURCES = core/intvcmp2.cc
 core_kripkecat_SOURCES = core/kripkecat.cc
 core_ltlprod_SOURCES  = core/ltlprod.cc
+core_mempool_SOURCES = core/mempool.cc
 core_ngraph_SOURCES = core/ngraph.cc
 core_randtgba_SOURCES = core/randtgba.cc
 core_readsat_SOURCES = core/readsat.cc
@@ -182,7 +184,8 @@ TESTS_tl = \
   core/uwrm.test \
   core/eventuniv.test \
   core/stutter-ltl.test \
-  core/format.test
+  core/format.test \
+  core/mempool.test
 
 TESTS_graph = \
   core/graph.test \
