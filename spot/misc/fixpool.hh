@@ -43,24 +43,24 @@ namespace spot
       const size_t alignement = 2 * sizeof(size_t);
       size_ = ((size >= sizeof(block_) ? size : sizeof(block_))
                + alignement - 1) & ~(alignement - 1);
-#ifdef VALGRIND
-      VALGRIND_CREATE_MEMPOOL(this, 0, false);
-#endif
+      chunk_size_ = (size_ > 128 ? size_ : 128) * 8192 - 64;
     }
 
     /// Free any memory allocated by this pool.
     ~fixed_size_pool()
     {
+#ifdef VALGRIND
       VALGRIND_DO_LEAK_CHECK;
+#endif
       while (chunklist_)
         {
           chunk_* prev = chunklist_->prev;
+#ifdef VALGRIND
+          VALGRIND_DESTROY_MEMPOOL(chunklist_);
+#endif
           free(chunklist_);
           chunklist_ = prev;
         }
-#ifdef VALGRIND
-      VALGRIND_DESTROY_MEMPOOL(this);
-#endif
     }
 
     /// Allocate \a size bytes of memory.
@@ -74,7 +74,11 @@ namespace spot
           freelist_ = f->next;
 #ifdef VALGRIND
           VALGRIND_MAKE_MEM_NOACCESS(&f->next, sizeof(f->next));
-          VALGRIND_MEMPOOL_ALLOC(this, f, size_);
+          chunk_* ff = reinterpret_cast<chunk_*>(f);
+          chunk_* c = chunklist_;
+          while (c > ff || c + chunk_size_ < ff)
+            c = c->prev;
+          VALGRIND_MEMPOOL_ALLOC(c, f, size_);
 #endif
           return f;
         }
@@ -85,24 +89,24 @@ namespace spot
       // If all the last chunk has been used, allocate one more.
       if (free_start_ + size_ > free_end_)
         {
-          const size_t requested = (size_ > 128 ? size_ : 128) * 8192 - 64;
-          chunk_* c = reinterpret_cast<chunk_*>(malloc(requested));
+          chunk_* c = reinterpret_cast<chunk_*>(malloc(chunk_size_));
           if (!c)
             throw std::bad_alloc();
           c->prev = chunklist_;
           chunklist_ = c;
 
           free_start_ = c->data_ + size_;
-          free_end_ = c->data_ + requested;
+          free_end_ = c->data_ + chunk_size_;
 #ifdef VALGRIND
           VALGRIND_MAKE_MEM_NOACCESS(free_start_, free_end_ - free_start_);
+          VALGRIND_CREATE_MEMPOOL(chunklist_, 0, false);
 #endif
         }
 
       void* res = free_start_;
       free_start_ += size_;
 #ifdef VALGRIND
-      VALGRIND_MEMPOOL_ALLOC(this, res, size_);
+      VALGRIND_MEMPOOL_ALLOC(chunklist_, res, size_);
 #endif
       return res;
     }
@@ -118,7 +122,11 @@ namespace spot
     {
       SPOT_ASSERT(ptr);
 #ifdef VALGRIND
-      VALGRIND_MEMPOOL_FREE(this, ptr);
+      chunk_* ff = reinterpret_cast<chunk_*>(const_cast<void*>(ptr));
+      chunk_* c = chunklist_;
+      while (c > ff || c + chunk_size_ < ff)
+        c = c->prev;
+      VALGRIND_MEMPOOL_FREE(c, ptr);
 #endif
       block_* b = reinterpret_cast<block_*>(const_cast<void*>(ptr));
 #ifdef VALGRIND
@@ -130,6 +138,7 @@ namespace spot
 
   private:
     size_t size_;
+    size_t chunk_size_;
     struct block_ { block_* next; }* freelist_;
     char* free_start_;
     char* free_end_;
