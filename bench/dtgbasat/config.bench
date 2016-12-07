@@ -1,0 +1,14 @@
+# This is a comment.
+glu:Glucose SPOT_SATSOLVER
+pic:PicoSAT SPOT_SATSOLVER
+libp:PicoSAT library
+#incr1:Incr naive
+#incr2p1:Incr param=1
+#incr2p2:Incr param=2
+#incr2p4:Incr param=4
+#incr2p8:Incr param=8
+#assp1:Assume param=1
+#assp2:Assume param=2
+#assp4:Assume param=4
+#assp8:Assume param=8
+#setlit:All transid=0
