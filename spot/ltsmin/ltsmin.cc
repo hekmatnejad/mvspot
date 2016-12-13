@@ -2100,7 +2100,8 @@ namespace spot
                       cspins_state_manager& manager,
                       ltsmin_kripkecube_ptr sys,
                       const spins_interface* d,
-                      std::vector<int> splitter_, unsigned tid)
+                      std::vector<int> splitter_, unsigned tid,
+                      std::function<bool(unsigned,unsigned)> cmp)
   {
     // FIXME compress!
     if (sys->compress())
@@ -2190,7 +2191,7 @@ namespace spot
                 [](void* , transition_info_t*, int *){
                 },
                 nullptr);
-             if (n == fitness)
+             if (cmp(n, fitness))
                population->push_back(st);
            }
          if (population->empty())
@@ -2208,7 +2209,9 @@ namespace spot
     return population;
   }
 
-  std::string ltsmin_model::csv(ltsmin_kripkecube_ptr sys)
+  std::string
+  ltsmin_model::interpolate_csv(ltsmin_kripkecube_ptr sys,
+                                std::function<bool(unsigned,unsigned)> fitness)
   {
     std::string res = "";
     auto d_ = sys->spins_interface();
@@ -2222,8 +2225,6 @@ namespace spot
       res.pop_back();
       res += '\n';
     }
-
-
 
     std::vector<int> splitter_;
     {
@@ -2274,11 +2275,12 @@ namespace spot
                     res.pop_back();
                     res += '\n';
                   },
-                  [&manager_, &sys, &d_, splitter_]
+                  [&manager_, &sys, &d_, splitter_, fitness]
                   (std::vector<cspins_state> cs) ->std::vector<cspins_state>*
                   {
-                    return  interpolate_states(cs, manager_, sys, d_,
-                                               splitter_, 0);
+                    return  interpolate_states
+                      (cs, manager_, sys, d_,
+                       splitter_, 0, fitness);
                   },
                   0, /* FIXME tid */
                   stop);
@@ -2405,7 +2407,9 @@ namespace spot
             (std::vector<cspins_state> cs) -> std::vector<cspins_state>*
               {
                 return  interpolate_states(cs, manager, sys, d_,
-                                           splitter_, i);
+                                           splitter_, i,
+                                           [](unsigned succ, unsigned fitness)
+                                              { return succ == fitness;});
               },
             map, i, stop);
       }
