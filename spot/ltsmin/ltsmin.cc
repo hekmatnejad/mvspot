@@ -1252,6 +1252,7 @@ namespace spot
   class cspins_iterator final
   {
   public:
+    cspins_iterator(cspins_iterator&) = delete;
     cspins_iterator(cspins_state s,
                     const spot::spins_interface* d,
                     cspins_state_manager& manager,
@@ -1265,7 +1266,6 @@ namespace spot
                     int dead_idx, unsigned tid)
       :  current_(0), cond_(cond), tid_(tid)
     {
-      successors_.reserve(10);
       inner.manager = &manager;
       inner.map = &map;
       inner.succ = &successors_;
@@ -1312,7 +1312,7 @@ namespace spot
                  cubeset& cubeset, int dead_idx, unsigned tid)
     {
       tid_ = tid;
-      cond_ = cond;
+      assert(cond == cond_);
       current_ = 0;
       // Constant time since int* is is_trivially_destructible
       successors_.clear();
@@ -1350,7 +1350,7 @@ namespace spot
         }
     }
 
-    ~cspins_iterator()
+    virtual ~cspins_iterator()
       {
         // Do not release successors states, the manager
         // will do it on time.
@@ -1441,9 +1441,9 @@ namespace spot
 
     ~kripkecube()
       {
-        for (auto i: recycle_)
+        for (auto& i: recycle_)
           {
-            for (auto j: i)
+            for (auto& j: i)
               {
                 cubeset_.release(j->condition());
                 delete j;
@@ -1453,9 +1453,10 @@ namespace spot
         for (unsigned i = 0; i < nb_threads_; ++i)
           {
             manager_[i].~cspins_state_manager();
-            delete inner_[i].compressed_;
-            delete inner_[i].uncompressed_;
+            delete[] inner_[i].compressed_;
+            delete[] inner_[i].uncompressed_;
           }
+	delete manager_;
         delete[] inner_;
       }
 
@@ -1499,9 +1500,11 @@ namespace spot
         }
       cube cond = cubeset_.alloc();
       compute_condition(cond, s, tid);
-      return new cspins_iterator(s, d_, manager_[tid], map_, inner_[tid],
-                                 -1, cond, compress_, selfloopize_,
-                                 cubeset_, dead_idx_, tid);
+      cspins_iterator* rval=
+	new cspins_iterator(s, d_, manager_[tid], map_, inner_[tid],
+			    -1, cond, compress_, selfloopize_,
+			    cubeset_, dead_idx_, tid);
+      return rval;
     }
 
     void recycle(cspins_iterator* it, unsigned tid)
@@ -2202,10 +2205,10 @@ namespace spot
              population = next_gen;
              next_gen = tmp;
            }
-
          next_gen->clear();
        }
-
+    delete[] tab;
+    delete next_gen;
     return population;
   }
 
@@ -2252,7 +2255,7 @@ namespace spot
     splitter_.push_back(d_->get_state_size()); // FIXME
 
 
-    auto manager_ = sys->manager(0/*FIXME for multithread*/);
+    auto& manager_ = sys->manager(0/*FIXME for multithread*/);
     bool stop = false;
     // FIXME when multiple threads
     int* uncompressed_ = new int[d_->get_state_size()+30];
