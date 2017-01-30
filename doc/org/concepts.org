@@ -561,7 +561,7 @@ edge can be a group of states.  If an edge has more than one
 destination, it is called a /universal edge/, and its destinations are
 referred to as its /universal destinations/.
 
-When an alternating automaton evaluates a word, following a universal
+When an alternating automaton evaluates a word, following an universal
 edge will have the same effect as forking the automaton to evaluate
 the rest of the word simultaneously from each universal destination.
 A run of an alternating automaton can therefore be pictured as a tree.
