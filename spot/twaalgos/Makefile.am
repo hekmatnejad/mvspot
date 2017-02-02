@@ -33,6 +33,7 @@ twaalgos_HEADERS = \
   bfssteps.hh \
   canonicalize.hh \
   cleanacc.hh \
+  cobuchi.hh \
   complete.hh \
   complement.hh \
   compsusp.hh \
@@ -91,6 +92,7 @@ libtwaalgos_la_SOURCES = \
   bfssteps.cc \
   canonicalize.cc \
   cleanacc.cc \
+  cobuchi.cc \
   complete.cc \
   complement.cc \
   compsusp.cc \

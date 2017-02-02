@@ -67,6 +67,7 @@
 #include <spot/twaalgos/gtec/gtec.hh>
 #include <spot/twaalgos/totgba.hh>
 #include <spot/twaalgos/langmap.hh>
+#include <spot/twaalgos/cobuchi.hh>
 
 static const char argp_program_doc[] ="\
 Convert, transform, and filter omega-automata.\v\
@@ -87,6 +88,7 @@ enum {
   OPT_COMPLEMENT,
   OPT_COMPLEMENT_ACC,
   OPT_COUNT,
+  OPT_DCA,
   OPT_DECOMPOSE_STRENGTH,
   OPT_DECOMPOSE_SCC,
   OPT_DESTUT,
@@ -328,6 +330,8 @@ static const argp_option options[] =
       "solver can be set thanks to the SPOT_SATSOLVER environment variable"
       "(see spot-x)."
       , 0 },
+    { "dca", OPT_DCA, nullptr, 0,
+      "rewrite the acceptance condition as deterministic co-Büchi", 0 },
     { nullptr, 0, nullptr, 0, "Decorations (for -d and -H1.1 output):", 9 },
     { "highlight-nondet-states", OPT_HIGHLIGHT_NONDET_STATES, "NUM",
       OPTION_ARG_OPTIONAL, "highlight nondeterministic states with color NUM",
@@ -485,6 +489,7 @@ static const char* opt_sat_minimize = nullptr;
 static int opt_highlight_nondet_states = -1;
 static int opt_highlight_nondet_edges = -1;
 static bool opt_highlight_languages = false;
+static bool opt_dca = false;
 
 static spot::twa_graph_ptr
 ensure_deterministic(const spot::twa_graph_ptr& aut, bool nonalt = false)
@@ -564,6 +569,9 @@ parse_opt(int key, char* arg, struct argp_state*)
       break;
     case OPT_COMPLEMENT_ACC:
       opt_complement_acc = true;
+      break;
+    case OPT_DCA:
+      opt_dca = true;
       break;
     case OPT_DECOMPOSE_STRENGTH:
       opt_decompose_strength = arg;
@@ -1218,6 +1226,8 @@ namespace
         aut = spot::to_generalized_rabin(aut, opt_gra == GRA_SHARE_INF);
       if (opt_gsa)
         aut = spot::to_generalized_streett(aut, opt_gsa == GSA_SHARE_FIN);
+      if (opt_dca)
+        aut = spot::nba_to_dca(aut, true);
 
       if (opt_simplify_exclusive_ap && !opt->excl_ap.empty())
         aut = opt->excl_ap.constrain(aut, true);
