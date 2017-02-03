@@ -67,6 +67,7 @@
 #include <spot/twaalgos/gtec/gtec.hh>
 #include <spot/twaalgos/totgba.hh>
 #include <spot/twaalgos/langmap.hh>
+#include <spot/twaalgos/parity.hh>
 
 static const char argp_program_doc[] ="\
 Convert, transform, and filter omega-automata.\v\
@@ -109,6 +110,7 @@ enum {
   OPT_IS_DETERMINISTIC,
   OPT_IS_EMPTY,
   OPT_IS_INHERENTLY_WEAK,
+  OPT_IS_PARITY,
   OPT_IS_SEMI_DETERMINISTIC,
   OPT_IS_STUTTER_INVARIANT,
   OPT_IS_TERMINAL,
@@ -121,6 +123,11 @@ enum {
   OPT_NONDET_STATES,
   OPT_PRODUCT_AND,
   OPT_PRODUCT_OR,
+  OPT_PARITY_CHANGE,
+  OPT_PARITY_CLEAN,
+  OPT_PARITY_COLORIZE,
+  OPT_PARITY_PRODUCT_AND,
+  OPT_PARITY_PRODUCT_OR,
   OPT_RANDOMIZE,
   OPT_REJ_SCCS,
   OPT_REJECT_WORD,
@@ -192,6 +199,10 @@ static const argp_option options[] =
       "keep only very-weak automata", 0 },
     { "is-alternating", OPT_IS_ALTERNATING, nullptr, 0,
       "keep only automata using universal branching", 0 },
+    { "is-parity", OPT_IS_PARITY, "[KIND STYLE]", OPTION_ARG_OPTIONAL,
+      "keep only automata with parity acceptance; KIND can be 'any' (the "
+      "default if there is no arguments), 'max', 'min'; TYPE can be 'any' "
+      "(the default is there is no arguments), 'even', 'odd'", 0 },
     { "intersect", OPT_INTERSECT, "FILENAME", 0,
       "keep automata whose languages have an non-empty intersection with"
       " the automaton from FILENAME", 0 },
@@ -251,6 +262,21 @@ static const argp_option options[] =
     { "product-or", OPT_PRODUCT_OR, "FILENAME", 0,
       "build the product with the automaton in FILENAME "
       "to sum languages", 0 },
+    { "parity-product", OPT_PARITY_PRODUCT_AND, "FILENAME", 0,
+      "build the parity product with the automaton in FILENAME"
+      "to intersect languages keeping the parity acceptance", 0 },
+    { "parity-product-and", 0, nullptr, OPTION_ALIAS, nullptr, 0 },
+    { "parity-product-or", OPT_PARITY_PRODUCT_OR, "FILENAME", 0,
+      "build the parity product with the automaton in FILENAME"
+      "to sum languages keeping the parity acceptance", 0 },
+    { "parity-clean", OPT_PARITY_CLEAN, nullptr, 0,
+      "remove unused acceptance sets of the parity acceptance", 0 },
+    { "parity-colorize", OPT_PARITY_COLORIZE, nullptr, 0,
+      "colorize automata with parity acceptance. All transitions belong to "
+      "exactly one acceptance set", 0 },
+    { "parity-change", OPT_PARITY_CHANGE, "KIND STYLE", 0,
+      "change the parity acceptance type; KIND can be 'any', 'max', 'min', "
+      "'same'; TYPE can be 'any', 'even', 'odd', 'same'", 0 },
     { "randomize", OPT_RANDOMIZE, "s|t", OPTION_ARG_OPTIONAL,
       "randomize states and transitions (specify 's' or 't' to "
       "randomize only states or transitions)", 0 },
@@ -400,6 +426,48 @@ static gsa_type const gsa_types[] =
 };
 ARGMATCH_VERIFY(gsa_args, gsa_types);
 
+static char const *const is_parity_kind_args[] =
+{
+  "any", "max", "min", nullptr
+};
+static spot::parity_kind const is_parity_kinds[] =
+{
+  spot::parity_kind_any, spot::parity_kind_max,
+  spot::parity_kind_min
+};
+ARGMATCH_VERIFY(is_parity_kind_args, is_parity_kinds);
+static char const *const is_parity_style_args[] =
+{
+  "any", "even", "odd", nullptr
+};
+static spot::parity_style const is_parity_styles[] =
+{
+  spot::parity_style_any, spot::parity_style_even,
+  spot::parity_style_odd
+};
+ARGMATCH_VERIFY(is_parity_style_args, is_parity_styles);
+
+static char const *const parity_change_kind_args[] =
+{
+  "any", "max", "min", "same", nullptr
+};
+static spot::parity_kind const parity_change_kinds[] =
+{
+  spot::parity_kind_any, spot::parity_kind_max,
+  spot::parity_kind_min, spot::parity_kind_same
+};
+ARGMATCH_VERIFY(parity_change_kind_args, parity_change_kinds);
+static char const *const parity_change_style_args[] =
+{
+  "any", "even", "odd", "same", nullptr
+};
+static spot::parity_style const parity_change_styles[] =
+{
+  spot::parity_style_any, spot::parity_style_even,
+  spot::parity_style_odd, spot::parity_style_same
+};
+ARGMATCH_VERIFY(parity_change_style_args, parity_change_styles);
+
 // We want all these variables to be destroyed when we exit main, to
 // make sure it happens before all other global variables (like the
 // atomic propositions maps) are destroyed.  Otherwise we risk
@@ -409,6 +477,8 @@ static struct opt_t
   spot::bdd_dict_ptr dict = spot::make_bdd_dict();
   spot::twa_graph_ptr product_and = nullptr;
   spot::twa_graph_ptr product_or = nullptr;
+  spot::twa_graph_ptr parity_product_and = nullptr;
+  spot::twa_graph_ptr parity_product_or = nullptr;
   spot::twa_graph_ptr intersect = nullptr;
   spot::twa_graph_ptr included_in = nullptr;
   spot::twa_graph_ptr equivalent_pos = nullptr;
@@ -436,6 +506,14 @@ static bool opt_is_inherently_weak = false;
 static bool opt_is_very_weak = false;
 static bool opt_is_stutter_invariant = false;
 static bool opt_invert = false;
+static bool opt_is_parity = false;
+static spot::parity_kind opt_is_parity_kind = spot::parity_kind_any;
+static spot::parity_style opt_is_parity_style = spot::parity_style_any;
+static bool opt_parity_clean = false;
+static bool opt_parity_colorize = false;
+static bool opt_parity_change = false;
+static spot::parity_kind opt_parity_change_kind = spot::parity_kind_any;
+static spot::parity_style opt_parity_change_style = spot::parity_style_any;
 static range opt_states = { 0, std::numeric_limits<int>::max() };
 static range opt_edges = { 0, std::numeric_limits<int>::max() };
 static range opt_accsets = { 0, std::numeric_limits<int>::max() };
@@ -683,6 +761,33 @@ parse_opt(int key, char* arg, struct argp_state*)
     case OPT_IS_EMPTY:
       opt_is_empty = true;
       break;
+    case OPT_IS_PARITY:
+      opt_is_parity = true;
+      if (arg)
+        {
+          char* save_ptr = nullptr;
+          char* pch = strtok_r(arg, " ", &save_ptr);
+          if (pch)
+          {
+            opt_is_parity_kind = XARGMATCH("--is-parity", pch,
+                                           is_parity_kind_args,
+                                           is_parity_kinds);
+            pch = strtok_r(nullptr, " ", &save_ptr);
+            if (pch)
+            {
+              opt_is_parity_style = XARGMATCH("--is-parity", pch,
+                                              is_parity_style_args,
+                                              is_parity_styles);
+            }
+            else
+              error(2, 0, "missing argument for --is-parity");
+          }
+          else
+            error(2, 0, "argument parsing error for --is-parity");
+          if (strtok_r(nullptr, " ", &save_ptr))
+              error(2, 0, "too many arguments for --is-parity");
+        }
+      break;
     case OPT_IS_INHERENTLY_WEAK:
       opt_is_inherently_weak = true;
       break;
@@ -743,6 +848,44 @@ parse_opt(int key, char* arg, struct argp_state*)
       opt_nondet_states = parse_range(arg, 0, std::numeric_limits<int>::max());
       opt_nondet_states_set = true;
       break;
+    case OPT_PARITY_PRODUCT_AND:
+      {
+        auto a = read_automaton(arg, opt->dict);
+        if (!opt->parity_product_and)
+          opt->parity_product_and = std::move(a);
+        else
+          try
+            {
+              opt->parity_product_and =
+                spot::parity_product(std::move(opt->parity_product_and),
+                                     std::move(a));
+            }
+          catch (const std::invalid_argument& e)
+            {
+              error(2, 0, "failed to compute the parity product:\n%s",
+                    e.what());
+            }
+      }
+      break;
+    case OPT_PARITY_PRODUCT_OR:
+      {
+        auto a = read_automaton(arg, opt->dict);
+        if (!opt->parity_product_or)
+          opt->parity_product_or = std::move(a);
+        else
+          try
+            {
+              opt->parity_product_or =
+                spot::parity_product_or(std::move(opt->parity_product_or),
+                                        std::move(a));
+            }
+          catch (const std::invalid_argument& e)
+            {
+              error(2, 0, "failed to compute the parity product:\n%s",
+                    e.what());
+            }
+      }
+      break;
     case OPT_PRODUCT_AND:
       {
         auto a = read_automaton(arg, opt->dict);
@@ -762,6 +905,43 @@ parse_opt(int key, char* arg, struct argp_state*)
           opt->product_or = spot::product_or(std::move(opt->product_or),
                                              std::move(a));
       }
+      break;
+    case OPT_PARITY_CLEAN:
+      opt_parity_clean = true;
+      break;
+    case OPT_PARITY_COLORIZE:
+       opt_parity_colorize = true;
+      break;
+    case OPT_PARITY_CHANGE:
+      opt_parity_change = true;
+      if (arg)
+        {
+          char* save_ptr = nullptr;
+          char* pch = strtok_r(arg, " ", &save_ptr);
+          if (pch)
+          {
+            opt_parity_change_kind = XARGMATCH("--parity-change", pch,
+                                               parity_change_kind_args,
+                                               parity_change_kinds);
+            pch = strtok_r(nullptr, " ", &save_ptr);
+            if (pch)
+            {
+              opt_parity_change_style = XARGMATCH("--is_parity", pch,
+                                                  parity_change_style_args,
+                                                  parity_change_styles);
+            }
+            else
+              error(2, 0, "missing argument for --parity-change");
+          }
+          else
+            error(2, 0, "argument parsing error for --parity-change");
+          if (strtok_r(nullptr, " ", &save_ptr))
+            error(2, 0, "too many arguments for --parity-change");
+        }
+      else
+        {
+          error(2, 0, "missing argument for --parity-change");
+        }
       break;
     case OPT_RANDOMIZE:
       if (arg)
@@ -1122,6 +1302,24 @@ namespace
         matched &= !aut->intersects(opt->equivalent_neg)
           && (!dtwa_complement(ensure_deterministic(aut, true))->
               intersects(opt->equivalent_pos));
+      if (opt_is_parity)
+      {
+        bool max;
+        bool odd;
+        bool is_parity = aut->acc().is_parity(max, odd, true);
+        auto num_sets = aut->num_sets();
+        matched &= is_parity &&
+                   ((opt_is_parity_kind == spot::parity_kind_any) ||
+                    (opt_is_parity_kind == spot::parity_kind_max && max) ||
+                    (opt_is_parity_kind == spot::parity_kind_min && !max) ||
+                    (num_sets <= 1 && opt_is_parity_style ==
+                                      spot::parity_style_any)) &&
+                   ((opt_is_parity_style == spot::parity_style_any) ||
+                    (opt_is_parity_style == spot::parity_style_even && !odd) ||
+                    (opt_is_parity_style == spot::parity_style_odd && odd) ||
+                    (num_sets <= 1 && opt_is_parity_kind ==
+                                      spot::parity_kind_any));
+      }
 
       if (matched && !opt->acc_words.empty())
         for (auto& word_aut: opt->acc_words)
@@ -1181,6 +1379,19 @@ namespace
       if (opt->product_or)
         aut = spot::product_or(std::move(aut), opt->product_or);
 
+      try
+      {
+        if (opt->parity_product_and)
+          aut = spot::parity_product(std::move(aut), opt->parity_product_and);
+        if (opt->parity_product_or)
+          aut = spot::parity_product_or(std::move(aut), opt->parity_product_or);
+      }
+      catch (const std::invalid_argument& e)
+        {
+          error(2, 0, "failed to compute the parity product:\n%s",
+                e.what());
+        }
+
       if (opt_decompose_strength)
         {
           aut = decompose_strength(aut, opt_decompose_strength);
@@ -1197,6 +1408,42 @@ namespace
 
       if (opt_complement)
         aut = spot::dtwa_complement(ensure_deterministic(aut));
+
+      if (opt_parity_clean)
+        try
+          {
+            spot::cleanup_parity_acceptance_here(aut);
+          }
+        catch (const std::invalid_argument& e)
+          {
+            error(2, 0, "failed to clean parity acceptance:\n%s",
+                  e.what());
+          }
+
+      if (opt_parity_colorize)
+        try
+          {
+          spot::colorize_parity_here(aut);
+          }
+        catch (const std::invalid_argument& e)
+          {
+            error(2, 0, "failed to colorize automaton "
+                  "with parity acceptance:\n%s", e.what());
+          }
+
+      if (opt_parity_change)
+      {
+        try
+          {
+            aut = spot::change_parity(aut, opt_parity_change_kind,
+                                      opt_parity_change_style);
+          }
+        catch (const std::invalid_argument& e)
+          {
+            error(2, 0, "failed to change parity acceptance:\n%s",
+                  e.what());
+          }
+      }
 
       aut = post.run(aut, nullptr);
 
