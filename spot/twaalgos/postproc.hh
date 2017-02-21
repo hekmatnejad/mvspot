@@ -69,7 +69,7 @@ namespace spot
     /// options used for debugging or benchmarking.
     postprocessor(const option_map* opt = nullptr);
 
-    enum output_type { TGBA, BA, Monitor, Generic };
+    enum output_type { TGBA, BA, Monitor, Generic, Parity };
 
     /// \brief Select the desired output type.
     ///

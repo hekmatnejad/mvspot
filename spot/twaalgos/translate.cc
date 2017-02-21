@@ -28,37 +28,29 @@ namespace spot
 {
 namespace
 {
-  inline twa_graph_ptr product_aux(const const_twa_graph_ptr& left,
-                                   const const_twa_graph_ptr& right,
-                                   bool)
+  static inline twa_graph_ptr product_aux(const const_twa_graph_ptr& left,
+                                          const const_twa_graph_ptr& right,
+                                          bool)
   {
     return product(left, right);
   }
 
-  inline twa_graph_ptr product_or_aux(const const_twa_graph_ptr& left,
-                                      const const_twa_graph_ptr& right,
-                                      bool)
+  static inline twa_graph_ptr product_or_aux(const const_twa_graph_ptr& left,
+                                             const const_twa_graph_ptr& right,
+                                             bool)
   {
     return product_or(left, right);
   }
 
-  template<typename T, typename U>
-  twa_graph_ptr make_product(translator& translator, formula* f,
-                             T product, U product_or)
+  template<typename T>
+  twa_graph_ptr make_product(translator& translator, formula* f, T product)
   {
-    if (!f->is(op::Or) && !f->is(op::And))
-      return nullptr;
-    twa_graph_ptr r = nullptr;
-    for (const auto& node: *f)
+    twa_graph_ptr r = translator.run(formula(*f->begin()));
+    for (size_t i = 1; i < f->size(); ++i)
       {
-        auto translation = translator.run(formula(node));
+        auto translation = translator.run(formula((*f)[i]));
         if (r)
-          {
-            if (f->is(op::Or))
-              r = product_or(r, translation, true);
-            else
-              r = product(r, translation, true);
-          }
+          r = product(r, translation, true);
         else
           r = translation;
       }
@@ -67,7 +59,8 @@ namespace
 }
   void translator::setup_opt(const option_map* opt)
   {
-    split_ = split_parity_ = comp_susp_ = early_susp_ = skel_wdba_ = skel_simul_ = 0;
+    split_ = split_parity_ = comp_susp_ = early_susp_ = skel_wdba_ =
+      skel_simul_ = 0;
 
     if (!opt)
       return;
@@ -144,14 +137,23 @@ namespace
                              unambiguous);
       }
     aut = this->postprocessor::run(aut, r);
-    if (!f->is_syntactic_obligation())
+    if (!f->is_syntactic_obligation() && split_ > 0)
       {
         twa_graph_ptr product_aut = nullptr;
-        if (split_ > 0)
-          product_aut = make_product(*this, f, product_aux, product_or_aux);
-        else if (split_parity_ > 0)
-          product_aut = make_product(*this, f, parity_product,
-                                     parity_product_or);
+        if (f->is(op::Or))
+          {
+            if (this->postprocessor::type_ == Parity)
+              product_aut = make_product(*this, f, parity_product_or);
+            else
+              product_aut = make_product(*this, f, product_or_aux);
+          }
+        else if (f->is(op::And))
+          {
+            if (this->postprocessor::type_ == Parity)
+              product_aut = make_product(*this, f, parity_product);
+            else
+              product_aut = make_product(*this, f, product_aux);
+          }
         if (product_aut)
           {
             product_aut = this->postprocessor::run(product_aut, r);

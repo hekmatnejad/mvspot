@@ -123,6 +123,7 @@ enum {
   OPT_NONDET_STATES,
   OPT_PRODUCT_AND,
   OPT_PRODUCT_OR,
+  OPT_PARITY,
   OPT_PARITY_CHANGE,
   OPT_PARITY_CLEAN,
   OPT_PARITY_COLORIZE,
@@ -274,6 +275,8 @@ static const argp_option options[] =
     { "parity-colorize", OPT_PARITY_COLORIZE, nullptr, 0,
       "colorize automata with parity acceptance. All transitions belong to "
       "exactly one acceptance set", 0 },
+    { "parity", OPT_PARITY, nullptr, 0, "convert the acceptance to a "
+      "parity acceptance", 0 },
     { "parity-change", OPT_PARITY_CHANGE, "KIND STYLE", 0,
       "change the parity acceptance type; KIND can be 'any', 'max', 'min', "
       "'same'; TYPE can be 'any', 'even', 'odd', 'same'", 0 },
@@ -867,6 +870,8 @@ parse_opt(int key, char* arg, struct argp_state*)
             }
       }
       break;
+    case OPT_PARITY:
+      opt_parity = true;
     case OPT_PARITY_PRODUCT_OR:
       {
         auto a = read_automaton(arg, opt->dict);

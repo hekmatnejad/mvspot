@@ -60,6 +60,7 @@ enum {
   OPT_SPNO,
   OPT_TA,
   OPT_TGTA,
+  OPT_PARITY,
 };
 
 static const argp_option options[] =
@@ -85,6 +86,8 @@ static const argp_option options[] =
     { nullptr, 0, nullptr, 0, "Miscellaneous options:", -1 },
     { "extra-options", 'x', "OPTS", 0,
       "fine-tuning options (see spot-x (7))", 0 },
+    { "parity", OPT_PARITY, nullptr, 0, "convert the acceptance to "
+      "a parity acceptance", 0 };
     { nullptr, 0, nullptr, 0, nullptr, 0 }
   };
 
@@ -96,7 +99,7 @@ const struct argp_child children[] =
     { nullptr, 0, nullptr, 0 }
   };
 
-enum ta_types { TGTA, GTA, TA };
+enum ta_types { TGTA, GTA, TA, PA };
 ta_types ta_type = TGTA;
 
 bool utf8 = false;
@@ -133,6 +136,9 @@ parse_opt(int key, char* arg, struct argp_state*)
       ta_type = GTA;
       type = spot::postprocessor::TGBA;
       break;
+    case OPT_PARITY:
+      ta_type = PA;
+      type = spot::postprocessor::Parity
     case OPT_TA:
       ta_type = TA;
       type = spot::postprocessor::BA;

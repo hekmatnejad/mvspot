@@ -199,6 +199,7 @@ namespace spot
 
     if (PREF_ == Any && level_ == Low
         && (type_ == Generic
+            || type_ == Parity
             || type_ == TGBA
             || (type_ == BA && a->is_sba())
             || (type_ == Monitor && a->num_sets() == 0)))
@@ -379,7 +380,7 @@ namespace spot
           }
       }
 
-    if (PREF_ == Deterministic && type_ == Generic && !dba)
+    if (PREF_ == Deterministic && (type_ == Generic || type_ == Parity) && !dba)
       {
         dba = tgba_determinize(to_generalized_buchi(sim),
                                false, det_scc_, det_simul_, det_stutter_);
@@ -400,6 +401,9 @@ namespace spot
         if (type_ == Generic)
           throw std::runtime_error
             ("postproc() not yet updated to mix sat-minimize and Generic");
+        if (type_ == Generic)
+          throw std::runtime_error
+            ("postproc() not yet updated to mix sat-minimize and Parity");
         unsigned target_acc;
         if (type_ == BA)
           target_acc = 1;
@@ -514,6 +518,9 @@ namespace spot
     sim = dba ? dba : sim;
 
     sim->remove_unused_ap();
+
+    if (type_ == Parity && !sim->acc().is_parity())
+      sim = do_degen(a);
 
     if (COMP_)
       sim = complete(sim);
