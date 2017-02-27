@@ -271,11 +271,229 @@ namespace spot
     }
   };
 
+  template<class Graph>
+  class SPOT_API mv_kripke_graph_succ_iterator final: public kripke_succ_iterator
+  {
+  private:
+    typedef typename Graph::edge edge;
+    typedef typename Graph::state_data_t state;
+    const Graph* g_;
+    edge t_;
+    edge p_;
+  public:
+    mv_kripke_graph_succ_iterator(const Graph* g,
+                               const typename Graph::state_storage_t* s):
+      kripke_succ_iterator(s->cond()),
+      g_(g),
+      t_(s->succ)
+    {
+      first();
+      update_condition();
+    }
+
+    ~mv_kripke_graph_succ_iterator()
+    {
+    }
+
+    void recycle(const typename Graph::state_storage_t* s)
+    {
+      cond_ = s->cond();
+      update_condition();
+      t_ = s->succ;
+    }
+
+    virtual bool first() override
+    {
+      p_ = t_;
+      update_condition();
+      return p_;
+    }
+
+    virtual bool next() override
+    {
+      p_ = g_->edge_storage(p_).next_succ;
+      update_condition();
+      return p_;
+    }
+
+    virtual bool done() const override
+    {
+      return !p_;
+    }
+
+    virtual kripke_graph_state* dst() const override
+    {
+      SPOT_ASSERT(!done());
+      return const_cast<kripke_graph_state*>
+        (&g_->state_data(g_->edge_storage(p_).dst));
+    }
+
+    void update_condition()
+    {
+      int src = g_->edge_storage(p_).src;
+      int dst = g_->edge_storage(p_).dst;
+      std::cout << src << " , " << dst << " <<<<<<<<<<<<<<<<<<<<<\n";
+      if (src > (int)g_->num_edges() || dst > (int)g_->num_edges() ||
+          src < 0 || dst < 0)
+        return;
+
+      kripke_graph_state *d = const_cast<kripke_graph_state *>(&g_->state_data(dst));
+      cond_ = d->cond();
+      d->destroy();
+    }
+  };
+
+
+  /// \class mv_kripke_graph
+  /// \brief Kripke Structure.
+  class SPOT_API mv_kripke_graph final : public kripke
+  {
+  public:
+    typedef digraph<kripke_graph_state, void> graph_t;
+    typedef graph_t::edge_storage_t edge_storage_t;
+  protected:
+    graph_t g_;
+    mutable unsigned init_number_;
+  public:
+    mv_kripke_graph(const bdd_dict_ptr& d)
+      : kripke(d), init_number_(0)
+    {
+    }
+
+    virtual ~mv_kripke_graph()
+    {
+      get_dict()->unregister_all_my_variables(this);
+    }
+
+    unsigned num_states() const
+    {
+      return g_.num_states();
+    }
+
+    unsigned num_edges() const
+    {
+      return g_.num_edges();
+    }
+
+    void set_init_state(graph_t::state s)
+    {
+      if (SPOT_UNLIKELY(s >= num_states()))
+        throw std::invalid_argument
+          ("set_init_state() called with nonexisiting state");
+      init_number_ = s;
+    }
+
+    graph_t::state get_init_state_number() const
+    {
+      // If the kripke has no state, it has no initial state.
+      if (num_states() == 0)
+        throw std::runtime_error("kripke has no state at all");
+      return init_number_;
+    }
+
+    virtual const kripke_graph_state* get_init_state() const override
+    {
+      return state_from_number(get_init_state_number());
+    }
+
+    /// \brief Allow to get an iterator on the state we passed in
+    /// parameter.
+    virtual mv_kripke_graph_succ_iterator<graph_t>*
+    succ_iter(const spot::state* st) const override
+    {
+      auto s = down_cast<const typename graph_t::state_storage_t*>(st);
+      SPOT_ASSERT(!s->succ || g_.is_valid_edge(s->succ));
+
+      if (this->iter_cache_)
+        {
+          auto it =
+            down_cast<mv_kripke_graph_succ_iterator<graph_t>*>(this->iter_cache_);
+          it->recycle(s);
+          this->iter_cache_ = nullptr;
+          return it;
+        }
+      return new mv_kripke_graph_succ_iterator<graph_t>(&g_, s);
+
+    }
+
+    graph_t::state
+    state_number(const state* st) const
+    {
+      auto s = down_cast<const typename graph_t::state_storage_t*>(st);
+      return s - &g_.state_storage(0);
+    }
+
+    const kripke_graph_state*
+    state_from_number(graph_t::state n) const
+    {
+      return &g_.state_data(n);
+    }
+
+    kripke_graph_state*
+    state_from_number(graph_t::state n)
+    {
+      return &g_.state_data(n);
+    }
+
+    std::string format_state(unsigned n) const
+    {
+      std::stringstream ss;
+      ss << n;
+      return ss.str();
+    }
+
+    virtual std::string format_state(const state* st) const override
+    {
+      return format_state(state_number(st));
+    }
+
+    /// \brief Get the condition on the state
+    virtual bdd state_condition(const state* s) const override
+    {
+      auto gs = down_cast<const kripke_graph_state*>(s);
+      return gs->cond();
+    }
+
+    edge_storage_t& edge_storage(unsigned t)
+    {
+      return g_.edge_storage(t);
+    }
+
+    const edge_storage_t edge_storage(unsigned t) const
+    {
+      return g_.edge_storage(t);
+    }
+
+    unsigned new_state(bdd cond)
+    {
+      return g_.new_state(cond);
+    }
+
+    unsigned new_states(unsigned n, bdd cond)
+    {
+      return g_.new_states(n, cond);
+    }
+
+    unsigned new_edge(unsigned src, unsigned dst)
+    {
+      return g_.new_edge(src, dst);
+    }
+  };
+
+
   typedef std::shared_ptr<kripke_graph> kripke_graph_ptr;
+  typedef std::shared_ptr<mv_kripke_graph> mv_kripke_graph_ptr;
 
   inline kripke_graph_ptr
   make_kripke_graph(const bdd_dict_ptr& d)
   {
     return std::make_shared<kripke_graph>(d);
   }
+
+  inline mv_kripke_graph_ptr
+  make_mv_kripke_graph(const bdd_dict_ptr& d)
+  {
+    return std::make_shared<mv_kripke_graph>(d);
+  }
+
 }
