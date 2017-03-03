@@ -26,6 +26,7 @@
 #include <spot/twaalgos/emptiness_stats.hh>
 
 #include <stack>
+#define PRINT_DEBUG_DATA 1
 
 namespace spot
 {
@@ -640,6 +641,9 @@ private:
               ("Fin acceptance is not supported by couvreur99()");
         }
 
+        #if PRINT_DEBUG_DATA
+        std::cout << "inside: check_impl()\n";
+        #endif
         // We use five main data in this algorithm:
         // * root, a stack of strongly connected components (SCC),
         // * h, a hash of all visited nodes with their order,
@@ -831,20 +835,46 @@ private:
       // the automaton is explicit
       {
         // NB: The order of the if's matter.
-        if (a->prop_terminal())
+        if (a->prop_terminal()){
+          #if PRINT_DEBUG_DATA
+          std::cout << "std::make_shared<couvreur99_new<true, TERMINAL>>\n"; 
+          #endif
           return std::make_shared<couvreur99_new<true, TERMINAL>>(ag, o);
-        if (a->prop_weak())
+        }
+        if (a->prop_weak()){
+          #if PRINT_DEBUG_DATA
+          std::cout << "std::make_shared<couvreur99_new<true, WEAK>>\n";
+          #endif
           return std::make_shared<couvreur99_new<true, WEAK>>(ag, o);
+        }
+          #if PRINT_DEBUG_DATA
+          std::cout << "std::make_shared<couvreur99_new<true, STRONG>>\n";
+          #endif
+
         return std::make_shared<couvreur99_new<true, STRONG>>(ag, o);
       }
     else
       // the automaton is abstract
       {
+        #if PRINT_DEBUG_DATA
+        std::cout << "the automaton is abstract\n";
+        #endif
         // NB: The order of the if's matter.
-        if (a->prop_terminal())
+        if (a->prop_terminal()){
+          #if PRINT_DEBUG_DATA
+          std::cout << "std::make_shared<couvreur99_new<false, TERMINAL>>\n"; 
+          #endif
           return std::make_shared<couvreur99_new<false, TERMINAL>>(a, o);
-        if (a->prop_weak())
+        }
+        if (a->prop_weak()){
+          #if PRINT_DEBUG_DATA
+          std::cout << "std::make_shared<couvreur99_new<false, WEAK>>\n"; 
+          #endif
           return std::make_shared<couvreur99_new<false, WEAK>>(a, o);
+        }
+          #if PRINT_DEBUG_DATA
+          std::cout << "std::make_shared<couvreur99_new<false, STRONG>>\n"; 
+          #endif
         return std::make_shared<couvreur99_new<false, STRONG>>(a, o);
       }
   }
