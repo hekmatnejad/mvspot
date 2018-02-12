@@ -97,6 +97,8 @@ namespace spot
     /// This should be a conjunction of atomic propositions.
     virtual bdd state_condition(const state* s) const = 0;
 
+    bdd state_condition_static(const state* s) const;
+
     /// \brief The acceptance mark that labels state \a s.
     virtual acc_cond::mark_t
       state_acceptance_mark(const state* s) const = 0;

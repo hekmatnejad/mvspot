@@ -37,6 +37,9 @@
 #include <spot/tl/formula.hh>
 #include <spot/misc/trival.hh>
 
+#include <spot/mv/mvfwd.hh>
+
+
 namespace spot
 {
   struct twa_run;
@@ -402,6 +405,12 @@ namespace spot
     {
     }
 
+//    float cost_inf() const { return  cost_inf_;}
+//    float cost_sup() const { return  cost_sup_;}
+//    float loc_dist() const { return loc_dist_;}
+//float cost_inf_;
+//float cost_sup_;
+//float loc_dist_;
     /// \name Iteration
     ///@{
 
@@ -628,7 +637,12 @@ namespace spot
     /// BDD dictionary used by the automaton.
     bdd_dict_ptr dict_;
   public:
-
+        //added by mohammad
+    twa(const bdd_dict_ptr& d, mvspot::mv_interval* intervals) :twa(d){
+        shared_intervals_ = intervals;
+    }
+    static mvspot::mv_interval* shared_intervals_;
+    
     virtual ~twa();
 
     /// \brief Get the initial state of the automaton.
@@ -880,6 +894,10 @@ namespace spot
                                          bool from_other = false) const;
 
 
+    //virtual twa_run_ptr mv_intersecting_run(const_twa_ptr other,
+    //                                     bool from_other = false) const;
+
+    
     /// \brief Return a word accepted by two automata.
     ///
     /// Note that this method DOES works with Fin
@@ -1562,3 +1580,4 @@ namespace spot
   /// \addtogroup twa_misc Miscellaneous algorithms on TωA
   /// \ingroup twa_algorithms
 }
+

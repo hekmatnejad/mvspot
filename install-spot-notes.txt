@@ -1,0 +1,6 @@
+autoreconf -vfi
+./configure --disable-python --enable-devel --enable-glibgxx-debug
+touch doc/stamp
+touch doc/org-stamp
+make V=0
+sudo make install -i
