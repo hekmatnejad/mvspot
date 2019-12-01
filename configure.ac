@@ -19,7 +19,13 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
+#
+# ********************************************************
+# changed by: Mohammad Hekmatnejad
+# email: mhekmatn@asu.edu
+# date: Nov 30, 2019
+# changes: the document and tests are excluded
+# ********************************************************
 AC_PREREQ([2.61])
 AC_INIT([spot], [2.3.1.dev], [spot@lrde.epita.fr])
 AC_CONFIG_AUX_DIR([tools])
@@ -242,6 +248,12 @@ AC_SUBST([GITPATCH], [$(if (git rev-parse) >/dev/null 2>&1; then
  --count)"
 fi)])
 
+##!!!!these are inside the below command
+  ##doc/Doxyfile
+  ##doc/Makefile
+  ##doc/tl/Makefile
+  ##doc/org/.dir-locals.el
+  ##doc/org/init.el
 AC_CONFIG_FILES([
   Makefile
   bin/Makefile
@@ -257,11 +269,6 @@ AC_CONFIG_FILES([
   bench/spin13/Makefile
   bench/wdba/Makefile
   bench/stutter/Makefile
-  doc/Doxyfile
-  doc/Makefile
-  doc/tl/Makefile
-  doc/org/.dir-locals.el
-  doc/org/init.el
   elisp/Makefile
   lib/Makefile
   picosat/Makefile
@@ -287,9 +294,9 @@ AC_CONFIG_FILES([
   tests/Makefile
   tools/x-to-1
 ])
-AC_CONFIG_FILES([doc/org/g++wrap], [chmod +x doc/org/g++wrap])
-AC_CONFIG_FILES([doc/dot], [chmod +x doc/dot])
-AC_CONFIG_FILES([tests/run], [chmod +x tests/run])
+##AC_CONFIG_FILES([doc/org/g++wrap], [chmod +x doc/org/g++wrap])
+##AC_CONFIG_FILES([doc/dot], [chmod +x doc/dot])
+##AC_CONFIG_FILES([tests/run], [chmod +x tests/run])
 AC_OUTPUT
 
 case $VERSION:$enable_devel in

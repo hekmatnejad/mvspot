@@ -24,5 +24,6 @@ AM_CXXFLAGS = $(WARNING_CXXFLAGS)
 mvdir = $(pkgincludedir)/mv
 
 mv_HEADERS = \
-  version.hh 
+  version.hh \
+  mvfwd.hh
   

@@ -1,6 +1,22 @@
+Authour:
+	Mohammad Hekmatnejad
+	mhekmatn@asu.edu
+	11/30/2019
+Platform: Linux (Ubuntu 18.04.3 LTS tested)
+Dependencies: check the information from https://gitlab.lrde.epita.fr/spot 
+
+If you are using the original Spot model checker code, then you might want to use the below commands in order to install it: 
+
 autoreconf -vfi
 ./configure --disable-python --enable-devel --enable-glibgxx-debug
 touch doc/stamp
 touch doc/org-stamp
-make V=0
+sudo make V=0
+sudo make install -i
+
+If you do not want to build the Spot documents (time consuming and error prone), and you will use the current modified configure.ac file, then the following commands can be used:
+ 
+autoreconf -vfi
+./configure 
+sudo make V=0
 sudo make install -i

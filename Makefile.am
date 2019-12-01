@@ -19,7 +19,13 @@
 ##
 ## You should have received a copy of the GNU General Public License
 ## along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
+##
+## ********************************************************
+## changed by: Mohammad Hekmatnejad
+## email: mhekmatn@asu.edu
+## date: Nov 30, 2019
+## changes: the document and tests are excluded
+## ********************************************************
 if NEVER
   # For Automake a, conditional directory
   # is conditionally built, but unconditionally distributed.
@@ -32,7 +38,9 @@ if USE_PYTHON
   PYTHON_SUBDIR = python
 endif
 
-SUBDIRS = picosat buddy lib ltdl spot bin tests $(PYTHON_SUBDIR) doc \
+##SUBDIRS = picosat buddy lib ltdl spot bin tests $(PYTHON_SUBDIR) doc \
+##					$(NEVER_SUBDIRS)
+SUBDIRS = picosat buddy lib ltdl spot bin tests $(PYTHON_SUBDIR) \
 					$(NEVER_SUBDIRS)
 
 UTF8 = utf8/doc/ReleaseNotes utf8/doc/utf8cpp.html utf8/utf8.h	\
