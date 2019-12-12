@@ -27,7 +27,6 @@
 
 namespace spot
 {
-
   /// \ingroup twa_on_the_fly_algorithms
   /// \brief A state for spot::twa_product.
   ///
@@ -50,14 +49,25 @@ namespace spot
     }
 
     state_product(const state* left,
-                  const state* right, 
+                  const state* right,
                   std::map<int,std::vector<int>>* look_ahead_loc,
                   fixed_size_pool* pool)
       :        left_(left), right_(right), count_(1), pool_(pool)
     {
         look_ahead_loc_ = look_ahead_loc;
-    }      
-      
+    }
+
+    state_product(const state* left,
+                  const state* right,
+                  std::map<int,std::vector<int>>* look_ahead_loc,
+                  void * geo_motion,
+                  fixed_size_pool* pool)
+      :        left_(left), right_(right), count_(1), pool_(pool)
+    {
+        look_ahead_loc_ = look_ahead_loc;
+        geo_motion_ = geo_motion;
+    }
+
     virtual void destroy() const override;
 
     const state*
@@ -77,6 +87,7 @@ namespace spot
     virtual size_t hash() const override;
     virtual state_product* clone() const override;
     std::map<int,std::vector<int>>* look_ahead_loc_;
+    void * geo_motion_;
 
   private:
     const state* left_;                ///< State from the left automaton.
