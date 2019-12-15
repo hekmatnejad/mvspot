@@ -87,7 +87,7 @@ namespace spot
     virtual size_t hash() const override;
     virtual state_product* clone() const override;
     std::map<int,std::vector<int>>* look_ahead_loc_;
-    void * geo_motion_ = nullptr;
+    mutable void * geo_motion_ = nullptr;
 
   private:
     const state* left_;                ///< State from the left automaton.
@@ -125,6 +125,7 @@ namespace spot
     const acc_cond& left_acc() const;
     const acc_cond& right_acc() const;
     std::map<int,std::vector<int>>* look_ahead_loc_;
+    mutable void * geo_motion_ = nullptr;
 
   protected:
     const_twa_ptr left_;
